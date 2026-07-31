@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>人生模拟 · Hy3 版（AI 叙事 · 犀牛鸟参赛）</title>
+<style>
+  :root{
+    --health:#00b894; --wealth:#fdcb6e; --relation:#e84393;
+    --happy:#e17055; --wisdom:#6c5ce7; --ink:#2d3142; --muted:#8a90a2;
+    --card:#ffffff; --bg1:#fff6ef; --bg2:#f1ecff; --line:#ececf3;
+    --N:#95a0b8; --R:#0984e3; --SR:#00b894; --EP:#a55eea; --MY:#d63031; --LEG:#e1b12c;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2)); color:var(--ink);
+    min-height:100vh; display:flex; justify-content:center; padding:14px 10px 40px;}
+  .phone{width:100%; max-width:480px; background:var(--card); border-radius:26px;
+    box-shadow:0 18px 50px rgba(108,92,231,.14); overflow:hidden; position:relative; min-height:82vh;}
+  .topbar{padding:13px 16px; background:linear-gradient(120deg,#6c5ce7,#a55eea); color:#fff;
+    display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:5;}
+  .topbar h1{font-size:15px; margin:0; font-weight:700; letter-spacing:.5px;}
+  .topbar .menu{font-size:19px; cursor:pointer; background:rgba(255,255,255,.18);
+    width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;}
+  .scroll{overflow-y:auto; max-height:calc(82vh - 56px); padding:0 14px 18px;}
+  .stagebar{padding:13px 2px 4px; display:flex; align-items:baseline; gap:10px;}
+  .stagebar .ph{font-size:19px; font-weight:800;}
+  .stagebar .age{font-size:12px; color:var(--muted); margin-left:auto; font-variant-numeric:tabular-nums;}
+  .stats{padding:2px 2px 10px; border-bottom:1px solid var(--line);}
+  .rowline{display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:12px;}
+  .rowline .lbl{width:32px; color:var(--muted); flex:0 0 auto;}
+  .bar{flex:1; height:10px; background:#eef0f6; border-radius:6px; overflow:hidden;}
+  .bar>i{display:block; height:100%; border-radius:6px; transition:width .6s ease;}
+  .rowline .val{width:30px; text-align:right; font-variant-numeric:tabular-nums;}
+
+  /* 卡牌抽屉（常驻展开，避免玩家找不到抽卡入口） */
+  .drawer{margin:12px 0 6px; border:1px solid var(--line); border-radius:16px; overflow:hidden;}
+  .drawer .dhead{display:flex; align-items:center; gap:8px; padding:11px 13px;
+    background:#f7f5ff; font-weight:700; font-size:13px;}
+  .drawer .dbody{display:block; padding:12px 12px 4px;}
+  .cards5{display:grid; grid-template-columns:repeat(5,1fr); gap:7px; margin:2px 0 10px;}
+  .mcard{border-radius:12px; padding:8px 3px; color:#fff; font-size:9.5px; text-align:center;
+    line-height:1.25; min-height:70px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; transition:.15s;}
+  .mcard.decided{outline:3px solid #fff; box-shadow:0 0 0 2px var(--wisdom);}
+  .mcard .rar{font-weight:800; font-size:8.5px; opacity:.95;}
+  .mcard .ti{font-weight:700; font-size:10px; padding:0 1px;}
+  .mcard .dm{font-size:8px; opacity:.85;}
+  .mcard .pick{font-size:8px; margin-top:2px; opacity:.92;}
+  .mcard .delta{font-size:7px; line-height:1.25; margin-top:1px; opacity:.95; padding:0 1px;}
+  .mcard.back{background:repeating-linear-gradient(45deg,#6c5ce7,#6c5ce7 6px,#7d6df0 6px,#7d6df0 12px); color:#fff; align-items:center; justify-content:center; position:relative;}
+  .mcard.back .q{font-size:22px; font-weight:800; opacity:.92;}
+  .mcard.back .bt{font-size:8px; opacity:.85; margin-top:3px;}
+  .mcard.back .pick{position:absolute; top:3px; right:5px; font-size:9px;}
+  @keyframes flipin{from{transform:rotateY(90deg);opacity:.2}to{transform:rotateY(0);opacity:1}}
+  .mcard.reveal-anim{animation:flipin .3s ease;}
+  .cardDetail{background:#faf9ff; border-radius:12px; padding:11px 12px; margin:0 0 11px; border:1px solid var(--line);}
+  .cardDetail .cdh{font-size:11px; font-weight:800; letter-spacing:.5px; margin-bottom:3px;}
+  .cardDetail .cdd{font-size:12.5px; color:#4a4f63; line-height:1.6; margin-bottom:9px;}
+  .opt{width:100%; text-align:left; border:1px solid var(--line); background:#fff; border-radius:11px;
+    padding:9px 11px; margin-bottom:7px; cursor:pointer; font-size:12.5px; color:var(--ink);}
+  .opt:active{transform:scale(.985);} .opt:hover{border-color:var(--wisdom);}
+  .opt.sel{border-color:var(--wisdom); background:#f3efff;}
+  .opt .h{display:block; font-size:10.5px; color:var(--muted); margin-top:2px;}
+
+  .genBtn{border:none; border-radius:14px; padding:13px; font-size:15px; font-weight:700; color:#fff;
+    background:linear-gradient(120deg,#6c5ce7,#a55eea); cursor:pointer; width:100%; margin:2px 0 8px;}
+  .genBtn:disabled{background:#d9d6e8; cursor:not-allowed;}
+  .nextBtn{border:none; border-radius:14px; padding:13px; font-size:15px; font-weight:700; color:#fff;
+    background:linear-gradient(120deg,#00b894,#55efc4); cursor:pointer; width:100%; margin:2px 0 8px;}
+
+  /* 人生故事面板（持续追加） */
+  .bioTitle{font-size:12px; font-weight:700; color:var(--muted); margin:14px 2px 4px;}
+  .bio{font-size:13px; line-height:1.95; color:#33384a; text-align:left; white-space:pre-wrap;
+    background:linear-gradient(180deg,#fffdf8,#fbf7ff); border-radius:14px; padding:14px 15px; border:1px solid var(--line);}
+  .bio .chap{display:block; font-weight:800; color:var(--wisdom); text-align:center; margin:6px 0 8px; font-size:13.5px;}
+
+  /* 开局 */
+  .center{padding:22px 18px; text-align:center;}
+  .hint{font-size:12px; color:var(--muted); line-height:1.7; margin:8px 0 16px;}
+  .entry{display:flex; flex-direction:column; gap:9px; text-align:left; margin:6px 0 12px;}
+  .ent{border:2px solid var(--line); border-radius:14px; padding:11px 13px; cursor:pointer; transition:.15s;}
+  .ent.sel{border-color:var(--wisdom); background:#f6f3ff;}
+  .ent .nm{font-weight:700; font-size:14px;} .ent .rr{font-size:10px; font-weight:800; margin-left:6px;}
+  .ent .ds{font-size:11.5px; color:#5b6072; margin-top:3px; line-height:1.5;}
+  .grouphint{font-size:11px; color:var(--muted); margin:2px 0 8px;}
+  .btn{border:none; border-radius:14px; padding:13px; font-size:15px; font-weight:700; color:#fff;
+    background:linear-gradient(120deg,#6c5ce7,#a55eea); cursor:pointer; width:100%; margin-top:8px;}
+  .btn.ghost{background:#f3f1ff; color:#6c5ce7;}
+
+  /* 弹层 */
+  .overlay{position:absolute; inset:0; background:rgba(45,49,66,.55); backdrop-filter:blur(3px);
+    display:none; align-items:center; justify-content:center; padding:16px; z-index:20; overflow-y:auto;}
+  .overlay.show{display:flex;}
+  .sheet{width:100%; background:#fff; border-radius:22px; padding:20px 18px; box-shadow:0 20px 50px rgba(0,0,0,.25);}
+  .grade{font-size:54px; font-weight:900; line-height:1; margin:4px 0;}
+  .grade.S{color:#e1b12c;} .grade.A{color:#00b894;} .grade.B{color:#0984e3;}
+  .grade.C{color:#a55eea;} .grade.D{color:#b2bec3;}
+  .dimsum{display:flex; justify-content:space-between; font-size:12px; padding:4px 2px; border-bottom:1px dashed var(--line);}
+  .rarstat{font-size:12px; color:var(--muted); margin:10px 0; display:flex; gap:10px; justify-content:center;}
+  .list .li{border:1px solid var(--line); border-radius:13px; padding:10px 12px; margin-bottom:8px; text-align:left;}
+  .list .li .t{font-weight:700; font-size:13px;} .list .li .s{font-size:11px; color:var(--muted); margin-top:2px;}
+  .toast{position:absolute; left:50%; top:16px; transform:translateX(-50%); background:rgba(45,49,66,.92);
+    color:#fff; font-size:12px; padding:8px 14px; border-radius:20px; z-index:30; opacity:0; transition:.3s; pointer-events:none;}
+  .toast.show{opacity:1;}
+  .deck-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; text-align:left; max-height:340px; overflow-y:auto;}
+  .deck-col{border:1px solid var(--line); border-radius:12px; padding:9px;}
+  .deck-col .hd{font-weight:700; font-size:12px; margin-bottom:5px;}
+  .deck-col .ci{font-size:10.5px; color:#5b6072; padding:2px 0; border-bottom:1px dashed var(--line);}
+  .deck-opt{font-size:10px; color:#7a8295; padding:1px 0 1px 8px; line-height:1.5;}
+  .deck-opt b{color:#3a3f52; font-weight:600;}
+  .deck-oh{color:#9aa3b8; font-size:9.5px; margin-left:3px;}
+  .st-meta{font-size:12px; color:var(--muted); margin:2px 0 8px;}
+  .st-bars{display:flex; flex-direction:column; gap:6px; margin:4px 0 8px;}
+  .dimrow{display:flex; align-items:center; gap:8px; font-size:12px;}
+  .dimrow .dn{width:34px; color:#5b6072; text-align:right; flex:none;}
+  .dimrow .bar{flex:1; height:10px; background:#eef0f6; border-radius:6px; overflow:hidden;}
+  .dimrow .bar i{display:block; height:100%;}
+  .dimrow .dv{width:30px; text-align:left; color:#3a3f52; font-weight:700; flex:none;}
+  .st-bio{font-size:12.5px; line-height:1.9; color:#33384a; text-align:left; white-space:pre-wrap; max-height:300px; overflow-y:auto; background:#faf9ff; border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:4px;}
+  .foot{font-size:10px; color:var(--muted); text-align:center; padding:8px 14px 2px; line-height:1.5;}
+  .setlbl{font-size:11px; color:var(--muted); margin:10px 0 3px; display:block; font-weight:700;}
+  .setinp{width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:10px; font-size:13px; box-sizing:border-box;}
+  .setstat{font-size:11px; margin:8px 0; color:var(--MY); font-weight:700;}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <div class="topbar">
+    <h1>🤖 人生模拟 · Hy3 版</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="menu" id="setBtn" title="Hy3 设置">⚙</div>
+      <div class="menu" id="menuBtn">☰</div>
+    </div>
+  </div>
+
+  <!-- 开局 -->
+  <div id="home" class="center">
+    <h2 style="margin:6px 0 2px">选择你的开局词条</h2>
+    <div class="hint">每条人生由「词条 + 五维抽卡 + 长篇人生叙事」构成。<br>本章人生可由 <b>Hy3（腾讯混元）</b> 实时撰写（右上角 ⚙ 填 Key 启用）；纯单机 · 卡牌不重复。</div>
+    <div class="grouphint" id="groupHint"></div>
+    <div class="entry" id="entryList"></div>
+    <button class="btn ghost" id="rerollBtn" style="margin-top:0">🔄 换一批词条</button>
+    <button class="btn" id="startBtn" style="margin-top:8px">🔄 开始这一世</button>
+    <button class="btn ghost" id="deckBtn" style="margin-top:8px">🃏 查看我的卡组库</button>
+  </div>
+
+  <!-- 游戏主屏（可滚动） -->
+  <div id="game" style="display:none">
+    <div class="scroll" id="scroll">
+      <div class="stagebar">
+        <span class="ph" id="stageName">童年</span>
+        <span class="age">🎂 <span id="age">0</span> / 80 岁</span>
+      </div>
+      <div class="stats" id="stats"></div>
+
+      <!-- 卡牌抽屉（可收起） -->
+      <div class="drawer" id="drawer">
+        <div class="dhead" id="dhead">
+          <span>🃏 本阶段五维卡 <span id="decideProg" style="color:var(--wisdom)"></span></span><span style="font-size:10px;color:var(--muted);margin-left:6px">· 点卡背翻面</span>
+        </div>
+        <div class="dbody">
+          <div class="cards5" id="drawnCards"></div>
+          <div id="cardDetailBox"></div>
+          <button class="genBtn" id="genBtn" disabled>✍️ 逐张抉择后，撰写本章人生</button>
+        </div>
+      </div>
+
+      <!-- 人生故事 -->
+      <div class="bioTitle">📖 你的人生（持续撰写中）<span id="aiTag" style="font-size:11px;color:var(--wisdom)"></span></div>
+      <div class="bio" id="bio"><span style="color:var(--muted)">尚未开始……抽完本阶段五维卡并抉择，人生便从这里落笔。</span></div>
+    </div>
+  </div>
+
+  <!-- 落幕档案 -->
+  <div class="overlay" id="ovArchive">
+    <div class="sheet report">
+      <div class="cat" style="color:var(--muted)">🌅 这一世落幕 · 人生档案</div>
+      <div class="grade" id="arGrade">A</div>
+      <div id="arDims"></div>
+      <div class="rarstat" id="arRar"></div>
+      <p class="desc" id="arVerdict" style="margin-top:6px"></p>
+      <button class="btn" id="rebornBtn" style="margin-top:10px">🔁 再活一世（新词条 / 新卡运）</button>
+      <button class="btn ghost" id="libBtn" style="margin-top:8px">📚 查看人生档案库</button>
+    </div>
+  </div>
+
+  <!-- 菜单 -->
+  <div class="overlay" id="ovMenu">
+    <div class="sheet">
+      <h3>☰ 菜单</h3>
+      <button class="opt" id="mDeck">🃏 我的卡组库</button>
+      <button class="opt" id="mLib">📚 人生档案库（<span id="libCount">0</span>）</button>
+      <button class="opt" id="mHome">🏠 回到开局（放弃本世）</button>
+      <button class="opt" style="border:none;background:#f3f3f8;color:var(--muted)" id="mClose">关闭</button>
+    </div>
+  </div>
+  <div class="overlay" id="ovDeck">
+    <div class="sheet">
+      <h3>🃏 我的卡组库</h3>
+      <p class="desc">按维度与稀有度整理，标注适用年龄阶段。正式版更高稀有度卡组靠人生评级逐步解锁。</p>
+      <div class="deck-grid" id="deckGrid"></div>
+      <button class="btn ghost" id="deckClose" style="margin-top:10px">关闭</button>
+    </div>
+  </div>
+  <div class="overlay" id="ovLib">
+    <div class="sheet">
+      <h3>📚 人生档案库</h3>
+      <p class="desc">每一世落幕生成一张永久档案，可反复回味与对比。</p>
+      <div class="list" id="libList"></div>
+      <button class="btn ghost" id="libClose" style="margin-top:10px">关闭</button>
+    </div>
+  </div>
+
+  <!-- 当世详情：五维进度条 + 人生故事 -->
+  <div class="overlay" id="ovStory">
+    <div class="sheet">
+      <h3>📖 当世详情 · <span class="grade" id="stGrade">A</span></h3>
+      <div class="st-meta" id="stMeta"></div>
+      <div class="st-bars" id="stBars"></div>
+      <div class="rarstat" id="stRar"></div>
+      <div class="st-bio" id="stBio"></div>
+      <button class="btn ghost" id="stClose" style="margin-top:10px">◀ 返回档案库</button>
+    </div>
+  </div>
+
+  <!-- Hy3 设置 -->
+  <div class="overlay" id="ovSet">
+    <div class="sheet">
+      <h3>⚙ Hy3 设置</h3>
+      <p class="desc">本章人生由 <b>Hy3（腾讯混元）</b> 实时撰写。⚠️ 注意：腾讯云 TokenHub <b>不允许浏览器直连</b>（会被 CORS 预检拒绝）。正确跑法是「本地代理」：先在本目录执行 <code>node proxy.js</code>，再打开 <code>http://localhost:8787</code>。选下方「运行方式」会自动填好地址，你只需粘贴 Key。Key 仅存于本机浏览器。</p>
+      <label class="setlbl">运行方式（Base URL）</label>
+      <select class="setinp" id="setPreset">
+        <option value="http://localhost:8787/v1">本地代理（推荐 · 避开 CORS，需先 node proxy.js）</option>
+        <option value="https://tokenhub.tencentmaas.com/v1">TokenHub 直连（大概率被浏览器 CORS 拦截）</option>
+        <option value="https://api.hunyuan.cloud.tencent.com/v1">混元官方直连</option>
+        <option value="https://openrouter.ai/api/v1">OpenRouter 直连</option>
+      </select>
+      <label class="setlbl">API Key</label>
+      <input class="setinp" id="setKey" type="password" placeholder="sk-... 粘贴你的 TokenHub key" autocomplete="off" />
+      <label class="setlbl">Base URL</label>
+      <input class="setinp" id="setBase" placeholder="http://localhost:8787/v1" />
+      <label class="setlbl">Model</label>
+      <input class="setinp" id="setModel" placeholder="hy3" />
+      <div class="setstat" id="setStat">未连接</div>
+      <button class="btn" id="setSave">💾 保存设置</button>
+      <button class="btn ghost" id="setTest">🔌 测试连接</button>
+      <button class="btn ghost" id="setClear">🗑 清除 Key</button>
+      <button class="btn ghost" id="setClose" style="margin-top:8px">关闭</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const DIMS=["health","wealth","relation","happy","wisdom"];
+const DIMNAME={health:"健康",wealth:"财富",relation:"关系",happy:"快乐",wisdom:"智慧"};
+const COLOR={health:"#00b894",wealth:"#fdcb6e",relation:"#e84393",happy:"#e17055",wisdom:"#6c5ce7"};
+const RARITY={N:"普通",R:"稀有",SR:"超稀有",EP:"史诗",MY:"神话",LEG:"传奇"};
+const RCOLOR={N:"#95a0b8",R:"#0984e3",SR:"#00b894",EP:"#a55eea",MY:"#d63031",LEG:"#e1b12c"};
+const RAR_ORDER=["N","R","SR","EP","MY","LEG"];
+const NARR_ORDER=["wisdom","health","wealth","relation","happy"];
+const clamp=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
+const STAGES=["童年","少年","青年","中年","暮年"];
+const STAGE_AGE=[15,25,45,65,80];
+const cn=n=>["零","一","二","三","四","五"][n]||n;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const TRANSITIONS=["起初，","其后，","又过了些年，","与此同时，","岁月流转，","生活的另一面里，","后来，","机缘巧合下，"];
+const STAGE_INTRO={
+  "童年":["你在一个普通家庭长大。那是个没有智能手机的年代，快乐很简单，世界很大，你用好奇的眼睛打量一切。",
+          "童年的天空很蓝。你在父母的庇护下跌跌撞撞地认识世界，许多后来的特质，都在这时悄悄埋下种子。"],
+  "少年":["青春期像一场突如其来的雨，你开始有了自己的主见，也第一次尝到人际与选择的微妙重量。",
+          "少年时的你，身体抽条、心思也跟着野长。课本之外，你正悄悄长成自己的样子。"],
+  "青年":["你离开象牙塔，第一次真正为自己的选择负责。社会不温柔，却也赏罚分明，给你上了几堂终身难忘的课。",
+          "二十出头的你，意气风发又手足无措。前途与感情同时摊开在面前，每一个决定都带着回响。"],
+  "中年":["你站到了家庭与事业的中流砥柱处，肩上担子最沉，脚下却也最稳。这是被生活反复打磨的年纪。",
+          "人到中年，镜子里的自己多了几分沧桑。你在责任与自我之间来回拉扯，渐渐读懂了成年人的含义。"],
+  "暮年":["你渐渐看淡了许多事，开始回望来路，也学着与不再年轻的身体和解。",
+          "夕阳正好的年纪，你有了大把时间发呆。往事一幕幕回放，你终于有资格对自己的一生下评语。"]
+};
+const STAGE_OUTRO={
+  "童年":["童年就这样在不知愁的日子里溜走了。你带着一身稚气，推开了下一扇门。",
+          "那些笨拙又明亮的日子，成为你此后漫长人生里反复回望的底色。"],
+  "少年":["少年时代的迷惘与锋芒，最终都被时间磨成了你性格的一部分。",
+          "你合上校服，把青涩留在原地，准备去更辽阔也更残酷的天地里闯一闯。"],
+  "青年":["青年时代的你，在试错与跌撞中，慢慢拼出了自己人生的雏形。",
+          "那些年攒下的本事、人脉与伤痕，都成了你日后披荆斩棘的行囊。"],
+  "中年":["中年这场硬仗打下来，你比原来更懂取舍，也更知冷暖。",
+          "你终于明白，所谓成熟，不过是把委屈咽下、把责任扛起后的那份平静。"],
+  "暮年":["暮年的你，把一生的得失都看成了风景。这趟人间，你没有白来。",
+          "最后的光阴里，你与自己和解了。故事在此刻画上句点，却也被你活成了传奇。"]
+};
+
+/* ============ 强取舍选项生成器 ============ */
+/* 为每张卡额外生成「单边极多加持 + 另维重削」的硬核选项，
+   体现「获得与失去相匹配、但数值不必相等」的取舍哲学。 */
+function randint(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function pickN(arr,n){return shuffle(arr).slice(0,n);}
+function fmtH(h){ return (h||"").replace(/（折中）/g,"").replace(/\s+/g," ").trim(); }
+
+/* 把策划里残留的「关于X…民间说法」折中套话，替换成贴合维度的具体行为 */
+function concretize(opt, card){
+  if(opt.narr && opt.narr.includes("你信了些民间说法")){
+    const acts={health:["循序渐进地调理身子","跟着节奏慢慢养","不猛练也不摆烂地护着身体"],
+                wealth:["不激进也不抠门地理财","拿闲钱浅浅试了试水","稳稳当当过日子"],
+                relation:["不黏人不疏远地相处","保持恰到好处的分寸","细水长流地经营人情"],
+                happy:["不疯不淡地找点乐子","把欢喜拆成日常的小确幸","松松快地过"],
+                wisdom:["在事上慢慢磨","边做边悟","不空想也不死读"]};
+    return {...opt, narr:`你${pick(acts[card.dim])}，${card.title}这件小事，不功不过地稳着，日子倒也踏实。`};
+  }
+  return opt;
+}
+
+/* 强取舍生成项：一个具体行为 + 另一维的代价。
+   关键：按年龄段区分措辞——童年/少年用孩子气的行为，青年+用成人行为，
+   保证「在幼儿园不可能谋财富」之类的事实不被打破。 */
+const TRADE_VERB={
+  child:{ health:["咬牙撑住","疯玩到底","把零食当饭吃","赖床不肯起","偷偷多玩一会儿"],
+          wealth:["把零花钱全花光","把压岁钱赌一把","把储蓄罐砸了","跟人换玩具亏了","偷偷多买零食"],
+          relation:["黏着好朋友","跟小伙伴闹翻","把玩具分给别人","独自一人玩","讨好大孩子"],
+          happy:["疯玩一整天","躲起来偷懒","把作业丢一边去玩","缠着大人要这要那","自得其乐"],
+          wisdom:["上课走神","偷偷看闲书","缠着问十万个为什么","把零花钱存起来学算账","对着难题发呆"] },
+  adult:{ health:["玩命硬扛","死磕锻炼","拿身体去熬","泡在训练里不肯歇","把作息彻底打乱"],
+          wealth:["孤注一掷","砸锅卖铁","梭哈全副身家","all in 押上全部","铤而走险炒一波"],
+          relation:["掏心掏肺","为情两肋插刀","广撒人情","把心全掏给人","四处结交"],
+          happy:["纵情享乐","彻底放飞","由着性子疯玩","把烦恼抛到脑后","及时行乐不回头"],
+          wisdom:["闭关苦读","死磕难题","四处拜师","把脑汁熬干","钻进书堆不出来"] }
+};
+function genTradeoff(card, stageName, used){
+  const dim=card.dim;
+  const others=DIMS.filter(d=>d!==dim);
+  const isChild = stageName==="童年" || stageName==="少年";
+  const grp = isChild ? "child" : "adult";
+  const cand=others.filter(d=>!used.has(dim+"-"+d));   // 同卡不重复牺牲同一维度
+  if(!cand.length) return null;
+  const a=cand[randint(0,cand.length-1)];
+  used.add(dim+"-"+a);
+  const MAG={N:[10,15],R:[12,17],SR:[16,22],EP:[20,28],MY:[26,36],LEG:[32,44]}[card.rarity]||[10,15];
+  const CUT={N:[7,11],R:[9,13],SR:[12,17],EP:[15,21],MY:[18,25],LEG:[22,30]}[card.rarity]||[7,11];
+  const big=randint(MAG[0],MAG[1]), cut=randint(CUT[0],CUT[1]);
+  const verb=pick(TRADE_VERB[grp][dim]);
+  // 只写「具体行为」，不揭示牺牲了哪一维——人生的选择本就未必知道后果
+  const name=verb;
+  const narr=`你${verb}，把所有心力都扑了进去，赌这一回的成色。`;
+  return {gen:true,n:name,h:`${DIMNAME[dim]}+${big} ${DIMNAME[a]}-${cut}`,d:{[dim]:big,[a]:-cut},narr};
+}
+// 为本卡生成「2–5 个」展示选项，且保证至少含一个强取舍生成项
+/* 展示选项数随稀有度递增：N 2-3 / R 3 / SR 3-4 / EP 4 / MY 4-5 / LEG 5
+   越稀有的卡，越是人生岔路口，给你更多抉择空间。 */
+function makeShown(card, stageName){
+  let pool=card.opts.slice().map(o=>concretize(o,card));
+  if(!card.unique){
+    const want={N:0,R:0,SR:1,EP:1,MY:2,LEG:2}[card.rarity]||0;
+    const used=new Set();
+    for(let k=0;k<want;k++){ const t=genTradeoff(card,stageName,used); if(t) pool.push(t); }
+  }
+  // 同一张卡内选项名去重，避免生成项与策划项或生成项彼此重复
+  const seen=new Set(); const uniq=[];
+  for(const o of pool){ if(seen.has(o.n)) continue; seen.add(o.n); uniq.push(o); }
+  pool=uniq;
+  const showMin={N:2,R:3,SR:3,EP:4,MY:4,LEG:5}[card.rarity]||2;
+  const showMax={N:3,R:3,SR:4,EP:4,MY:5,LEG:5}[card.rarity]||3;
+  const n=Math.min(randint(showMin,showMax), pool.length);
+  return shuffle(pool).slice(0,n);
+}
+
+/* ============ 卡池：五维 × 三稀有度 × 阶段标签，策划原选项 + 强取舍生成项 ============ */
+/* stages: 适用阶段；unique: 整局仅一次的人生大事 */
+const CARDS=[
+  {id:"hN_c1",dim:"health",rarity:"N",title:"接种疫苗",stages:["童年"],desc:"幼儿园组织接种，你攥紧衣角。",opts:[{n:"乖乖配合",h:"健康+5 快乐-1",d:{health:5,happy:-1},narr:"你咬着牙伸出了胳膊，针头落下，小小的不适换来了一整年的平安。"},{n:"哭着躲开",h:"健康-2 快乐+1",d:{health:-2,happy:1},narr:"你躲过了这一针，却也在后来的一场小病里吃了些苦头。"},{n:"蒙混过关",h:"健康-1 智慧+1",d:{health:-1,wisdom:1},narr:"你装作打完了，省了眼泪，却也第一次学会了在规则边缘打滑。"}]},
+  {id:"hN_c2",dim:"health",rarity:"N",title:"蹿个子",stages:["童年"],desc:"你正长身体，胃口大得惊人。",opts:[{n:"营养均衡",h:"健康+6",d:{health:6},narr:"你不挑食，个子悄悄窜了起来，跑跳都比同伴灵巧。"},{n:"偏爱零食",h:"健康-2 快乐+2",d:{health:-2,happy:2},narr:"你钟爱零食的甜，快乐是多了，牙齿和胃却悄悄记了账。"},{n:"暴饮暴食",h:"健康-1 财富-2",d:{health:-1,wealth:-2},narr:"你吃得欢，零花钱也跟着见了底，肚子圆了身板却虚了些。"}]},
+  {id:"hN_c3",dim:"health",rarity:"N",title:"学游泳",stages:["童年"],desc:"爸爸带你到泳池边学换气。",opts:[{n:"扑腾学会",h:"健康+5 快乐+2",d:{health:5,happy:2},narr:"你呛了几口水，终于浮了起来，那种征服水面的得意至今记得。"},{n:"怕水退缩",h:"健康+1 智慧+1",d:{health:1,wisdom:1},narr:"你没敢下水，却在岸上把动作看得分明，也算另类的领悟。"},{n:"听听门道",h:"健康+3 快乐+1 智慧+1（折中）",d:{health:3,happy:1,wisdom:1},narr:"关于「学游泳」，你信了些民间说法试了试，好坏参半，权当添了段经历。"}]},
+  {id:"hN_t1",dim:"health",rarity:"N",title:"体育课",stages:["少年"],desc:"体育老师狠抓体能，你叫苦不迭。",opts:[{n:"认真锻炼",h:"健康+6 快乐+1",d:{health:6,happy:1},narr:"你咬牙跑完了每一圈，体能见长，连精神头都好了起来。"},{n:"能躲就躲",h:"健康-3",d:{health:-3},narr:"你总找借口溜边,体质一年不如一年,爬几层楼就喘。"},{n:"偷练偏门",h:"健康+2 智慧+1",d:{health:2,wisdom:1},narr:"你琢磨出应付考试的窍门,既保了体测,又省了真力气。"}]},
+  {id:"hN_t2",dim:"health",rarity:"N",title:"熬夜开黑",stages:["少年"],desc:"你迷上了通宵打游戏。",opts:[{n:"节制一点",h:"快乐+2 健康+1",d:{happy:2,health:1},narr:"你给自己定了闹钟,玩得尽兴也不至于太伤身。"},{n:"通宵上头",h:"健康-6 快乐+3",d:{health:-6,happy:3},narr:"你熬红了眼,虚拟的快感是真的,第二天的黑眼圈也是真的。"},{n:"组队开黑",h:"健康-3 快乐+4 关系+2",d:{health:-3,happy:4,relation:2},narr:"你和队友并肩作战,友谊升温,只是身体悄悄亮了黄灯。"}]},
+  {id:"hN_t3",dim:"health",rarity:"N",title:"青春期长痘",stages:["少年"],desc:"脸上冒出一片青春痘。",opts:[{n:"科学护肤",h:"健康+3 快乐+1",d:{health:3,happy:1},narr:"你认真洗脸作息,皮肤慢慢平稳,也有了点自信。"},{n:"挤痘留痕",h:"健康-2 快乐-1",d:{health:-2,happy:-1},narr:"你手欠挤了几颗,留下淡淡的印,照镜子时多少有点懊恼。"},{n:"顺其自然",h:"健康+1（折中）",d:{health:1,happy:0},narr:"关于「青春期长痘」，你不强求也不放任，跟着身体的节奏慢慢调理，不功不过地稳着。"}]},
+  {id:"hN_y1",dim:"health",rarity:"N",title:"职场熬夜",stages:["青年"],desc:"刚工作，天天加班到深夜。",opts:[{n:"硬扛",h:"健康-5 财富+3",d:{health:-5,wealth:3},narr:"你拿身体换绩效,工资条好看了,体检单却开始不好看。"},{n:"准点下班",h:"健康+2 快乐-1",d:{health:2,happy:-1},narr:"你守住了作息,被说不够拼,但镜子里的自己精神多了。"},{n:"摸鱼养生",h:"健康+1 财富-1",d:{health:1,wealth:-1},narr:"你在上班时间偷偷拉伸喝茶,少做了事,却多保了身。"}]},
+  {id:"hN_y2",dim:"health",rarity:"N",title:"健身热潮",stages:["青年"],desc:"身边掀起了一阵健身热。",opts:[{n:"办卡练起来",h:"健康+6 财富-3",d:{health:6,wealth:-3},narr:"你咬牙办了年卡,撸铁跑步,线条渐渐有了模样。"},{n:"原地围观",h:"快乐+1",d:{happy:1},narr:"你只在朋友圈点赞,省了钱也省了力,身材原地踏步。"},{n:"居家徒手",h:"健康+3 财富+1",d:{health:3,wealth:1},narr:"你没办卡,跟着视频在家练,省钱也练出了习惯。"}]},
+  {id:"hN_y3",dim:"health",rarity:"N",title:"烟酒社交",stages:["青年"],desc:"应酬场上烟酒少不了。",opts:[{n:"来者不拒",h:"健康-6 关系+4",d:{health:-6,relation:4},narr:"你杯杯见底,场面热络了,肺和肝却在替你买单。"},{n:"适度参与",h:"健康-2 关系+2",d:{health:-2,relation:2},narr:"你举杯有度,既没扫兴,也没把身体喝垮。"},{n:"滴酒不沾",h:"健康+2 关系-2",d:{health:2,relation:-2},narr:"你坚持不碰,清醒是清醒,却也少了些称兄道弟的热乎。"}]},
+  {id:"hN_m1",dim:"health",rarity:"N",title:"亚健康警报",stages:["中年"],desc:"体检亮起黄灯，三高初现。",opts:[{n:"自律调理",h:"健康+8 快乐-2",d:{health:8,happy:-2},narr:"你戒了油腻、逼自己运动,指标回落,只是少了些口腹之欢。"},{n:"放任不管",h:"健康-8 快乐+2",d:{health:-8,happy:2},narr:"你自欺欺人地忽略报告,舒服了当下,埋下了更大的雷。"},{n:"半信半疑",h:"健康+2",d:{health:2},narr:"你象征性改了点习惯,指标没大好也没更糟,聊胜于无。"}]},
+  {id:"hN_m2",dim:"health",rarity:"N",title:"运动拉伤",stages:["中年"],desc:"你运动时不慎拉伤了腰。",opts:[{n:"科学康复",h:"健康+4",d:{health:4},narr:"你老老实实做理疗,腰好了,也学会了和年龄讲和。"},{n:"带伤硬上",h:"健康-6",d:{health:-6},narr:"你硬撑着不休息,旧伤添新伤,后来每逢阴雨天就犯。"},{n:"转练太极",h:"健康+3 智慧+1",d:{health:3,wisdom:1},narr:"你改练慢悠悠的太极,伤养好了,心境也沉静了些。"}]},
+  {id:"hN_m3",dim:"health",rarity:"N",title:"应酬酒局",stages:["中年"],desc:"推不掉的中年饭局一场接一场。",opts:[{n:"以茶代酒",h:"健康+3 关系-1",d:{health:3,relation:-1},narr:"你端茶示意,护了肝,有人笑你养生过度,你只当没听见。"},{n:"舍命陪客",h:"健康-5 关系+3",d:{health:-5,relation:3},narr:"你杯杯见底换来了生意,回家却抱着马桶悔青了肠。"},{n:"规律作息",h:"关系+1 健康-1（折中）",d:{health:-1,relation:1},narr:"关于「应酬酒局」，你给自己定了作息表，不猛练也不摆烂，身子骨悄悄稳住了。"}]},
+  {id:"hN_o1",dim:"health",rarity:"N",title:"养生之道",stages:["暮年"],desc:"你开始研究怎么养生。",opts:[{n:"规律起居",h:"健康+8",d:{health:8},narr:"你早睡早起、按时三餐,身子骨比同龄人硬朗一截。"},{n:"偏方乱试",h:"健康-4 智慧+2",d:{health:-4,wisdom:2},narr:"你迷信各种偏方,折腾几回反倒伤身,却也长了些见识。"},{n:"顺其自然",h:"健康+3 快乐+2",d:{health:3,happy:2},narr:"你不折腾,该吃吃该睡睡,反倒松松快地活。"}]},
+  {id:"hN_o2",dim:"health",rarity:"N",title:"老慢病",stages:["暮年"],desc:"慢性病悄悄找上门。",opts:[{n:"按时服药",h:"健康+5",d:{health:5},narr:"你把药当日常,病情稳稳的,没让它坏了晚年兴致。"},{n:"讳疾忌医",h:"健康-7",d:{health:-7},narr:"你嫌麻烦不肯治,小病拖大,后来常吃些苦头。"},{n:"顺其自然",h:"健康-1（折中）",d:{health:-1},narr:"关于「老慢病」，你不强求也不放任，跟着身体的节奏慢慢调理，不功不过地稳着。"}]},
+  {id:"hN_o3",dim:"health",rarity:"N",title:"晨练队伍",stages:["暮年"],desc:"小区里一群老人天天晨练。",opts:[{n:"加入队伍",h:"健康+6 关系+2",d:{health:6,relation:2},narr:"你跟着打拳聊天,身子暖了,还结识了几位老伙计。"},{n:"独自散步",h:"健康+3",d:{health:3},narr:"你不爱扎堆,独自遛弯,清静自在也养了身。"},{n:"听听门道",h:"健康+5 关系+1（折中）",d:{health:5,relation:1},narr:"关于「晨练队伍」，你信了些民间说法试了试，好坏参半，权当添了段经历。"}]},
+  {id:"hR_y1",dim:"health",rarity:"R",title:"海外体检",stages:["青年","中年"],desc:"你攒钱去做了一次顶尖全面体检。",opts:[{n:"重金深查",h:"健康+10 财富-8",d:{health:10,wealth:-8},narr:"你飞去海外做了全套,查得透彻,安心不少,钱包却瘪了。"},{n:"常规项目",h:"健康+4",d:{health:4},narr:"你做了基础版,该知道的都知道了,钱也留住了。"},{n:"听听门道",h:"健康+7 财富-4（折中）",d:{health:7,wealth:-4},narr:"关于「海外体检」，你信了些民间说法试了试，好坏参半，权当添了段经历。"}]},
+  {id:"hR_m1",dim:"health",rarity:"R",title:"极限运动",stages:["中年","青年"],desc:"朋友拉你去跳伞，刺激又危险。",opts:[{n:"纵身一跃",h:"快乐+8 健康+6",d:{happy:8,health:6},narr:"你跳出机舱,风在耳边吼,落地那刻觉得自己又活了一回。"},{n:"地面观望",h:"快乐+2 健康+1",d:{happy:2,health:1},narr:"你笑着送他们上去,自己留了份稳妥,也省了惊吓。"},{n:"听听门道",h:"快乐+5 健康+4（折中）",d:{happy:5,health:4},narr:"关于「极限运动」，你信了些民间说法试了试，好坏参半，权当添了段经历。"}]},
+  {id:"hR_o1",dim:"health",rarity:"R",title:"中医调理",stages:["中年","暮年"],desc:"你寻到一位口碑极好的老中医。",opts:[{n:"坚持调理",h:"健康+9 快乐+2",d:{health:9,happy:2},narr:"你按时喝药、听嘱咐,多年沉疴竟慢慢松了口。"},{n:"半途而废",h:"健康+2",d:{health:2},narr:"你喝几天就嫌苦停了,好处只沾了个边。"},{n:"顺其自然",h:"健康+6 快乐+1（折中）",d:{health:6,happy:1},narr:"关于「中医调理」，你不强求也不放任，跟着身体的节奏慢慢调理，不功不过地稳着。"}]},
+  {id:"hS_y1",dim:"health",rarity:"LEG",title:"天价定制医疗",stages:["青年","中年","暮年"],desc:"你花重金做了一套前沿基因修复疗程。",opts:[{n:"砸钱做全套修复",h:"健康+22 财富-20 智慧+4",d:{health:22,wealth:-20,wisdom:4},narr:"你砸下重金换回一副焕然一新的身子,也懂了健康原是无价。"},{n:"保守治疗",h:"健康+6 财富-4",d:{health:6,wealth:-4},narr:"你选了稳妥方案,花小钱保了本,身体也见好。"},{n:"规律作息",h:"健康+14 智慧+2 财富-12（折中）",d:{health:14,wealth:-12,wisdom:2},narr:"关于「天价定制医疗」，你给自己定了作息表，不猛练也不摆烂，身子骨悄悄稳住了。"}]},
+  {id:"hS_o1",dim:"health",rarity:"LEG",title:"百岁秘方",stages:["暮年"],desc:"传闻中的长寿方子流落民间，价高者得。",opts:[{n:"重金求购",h:"健康+16 财富-14 快乐-2",d:{health:16,wealth:-14,happy:-2},narr:"你倾囊换得方子,身子硬朗了,却也为掏空家底暗暗肉疼。"},{n:"自行钻研",h:"健康+8 智慧+8",d:{health:8,wisdom:8},narr:"你没买,自己翻医书琢磨出一套,既养了身也长了学问。"},{n:"听听门道",h:"健康+12 智慧+4 财富-7 快乐-1（折中）",d:{health:12,wealth:-7,happy:-1,wisdom:4},narr:"关于「百岁秘方」，你信了些民间说法试了试，好坏参半，权当添了段经历。"}]},
+  {id:"hS_y2",dim:"health",rarity:"LEG",title:"外星基因",stages:["青年","中年"],desc:"一次罕见机遇让你接触到超前生命科技。",opts:[{n:"勇敢尝试",h:"健康+18 智慧+6 财富-8",d:{health:18,wisdom:6,wealth:-8},narr:"你成了第一批受试者,身体机能逆龄般回升,只是花了不菲。"},{n:"婉言谢绝",h:"智慧+2",d:{wisdom:2},narr:"你顾虑风险谢绝了,但那扇门让你对生命有了新的想象。"},{n:"顺其自然",h:"健康+9 智慧+4 财富-4（折中）",d:{health:9,wisdom:4,wealth:-4},narr:"关于「外星基因」，你不强求也不放任，跟着身体的节奏慢慢调理，不功不过地稳着。"}]},
+  {id:"wN_c1",dim:"wealth",rarity:"N",title:"压岁钱",stages:["童年"],desc:"过年红包鼓鼓，你攥在手心。",opts:[{n:"存起来",h:"财富+4 智慧+1",d:{wealth:4,wisdom:1},narr:"你把红包交给妈妈保管,第一次有了『积蓄』的概念。"},{n:"买糖吃",h:"财富-2 快乐+3",d:{wealth:-2,happy:3},narr:"你全换成了糖果,甜在嘴里,也甜在那个穷开心的年。"},{n:"分小伙伴",h:"财富-1 关系+2",d:{wealth:-1,relation:2},narr:"你请伙伴们吃了糖,人缘好了,自己也没剩几张。"}]},
+  {id:"wN_c2",dim:"wealth",rarity:"N",title:"每周零花",stages:["童年"],desc:"爸妈给你一点零花钱。",opts:[{n:"攒着",h:"财富+3",d:{wealth:3},narr:"你把钱一张张压在枕头下,看着小金库慢慢鼓起来。"},{n:"花光",h:"财富-1 快乐+2",d:{wealth:-1,happy:2},narr:"你见啥买啥,快乐是即时到账,余额也是即时见底。"},{n:"买文具",h:"财富+1 智慧+1",d:{wealth:1,wisdom:1},narr:"你买了漂亮文具,学习兴致都高了几分。"}]},
+  {id:"wN_c3",dim:"wealth",rarity:"N",title:"跳蚤市场",stages:["童年"],desc:"你摆摊卖旧玩具。",opts:[{n:"认真经营",h:"财富+3 智慧+1",d:{wealth:3,wisdom:1},narr:"你吆喝着把玩具卖了,赚了第一笔『生意钱』。"},{n:"半途而废",h:"财富+1 快乐+1",d:{wealth:1,happy:1},narr:"你玩心大过生意,卖几个就收摊,权当过家家。"},{n:"小试身手",h:"财富+2 智慧+1 快乐+1（折中）",d:{wealth:2,wisdom:1,happy:1},narr:"关于「跳蚤市场」，你拿闲钱浅浅试了下水，小赚小赔，图个乐子。"}]},
+  {id:"wN_t1",dim:"wealth",rarity:"N",title:"送报兼职",stages:["少年"],desc:"你课余送报纸赚零花钱。",opts:[{n:"勤工俭学",h:"财富+5 快乐-1",d:{wealth:5,happy:-1},narr:"你顶着晨光挨家送报,手冻红也赚到了自立的踏实。"},{n:"躺平",h:"快乐+2",d:{happy:2},narr:"你宁愿多睡会儿,零花钱的事,以后再说吧。"},{n:"小试身手",h:"财富+3 快乐+1（折中）",d:{wealth:3,happy:1},narr:"关于「送报兼职」，你拿闲钱浅浅试了下水，小赚小赔，图个乐子。"}]},
+  {id:"wN_t2",dim:"wealth",rarity:"N",title:"压岁钱理财",stages:["少年"],desc:"你学着打理自己的压岁钱。",opts:[{n:"存银行",h:"财富+4 智慧+1",d:{wealth:4,wisdom:1},narr:"你开了账户,看着利息一点点长,初步懂了钱生钱。"},{n:"全花掉",h:"财富-2 快乐+2",d:{wealth:-2,happy:2},narr:"你犒劳了自己一套心仪已久的装备,快乐拉满。"},{n:"买基金",h:"财富+6 智慧+2",d:{wealth:6,wisdom:2},narr:"你试着买了点基金,有赚有赔,却练出了财商。"}]},
+  {id:"wN_t3",dim:"wealth",rarity:"N",title:"二手交易",stages:["少年"],desc:"你在网上倒卖闲置。",opts:[{n:"小赚一笔",h:"财富+4 智慧+1",d:{wealth:4,wisdom:1},narr:"你低买高卖,赚到了差价,也摸到了交易的门道。"},{n:"被骗一次",h:"财富-3 智慧+2",d:{wealth:-3,wisdom:2},narr:"你栽了个跟头,亏了钱,却记住了『便宜没好货』。"},{n:"量入为出",h:"财富+1 智慧+2（折中）",d:{wealth:1,wisdom:2},narr:"关于「二手交易」，你不激进也不抠门，钱稳稳当当，日子也过得踏实。"}]},
+  {id:"wN_y1",dim:"wealth",rarity:"N",title:"第一份工资",stages:["青年"],desc:"你拿到了人生第一份工资。",opts:[{n:"寄回家",h:"财富-3 关系+4",d:{wealth:-3,relation:4},narr:"你给爸妈寄了钱,电话那头哽咽的『懂事了』让你鼻酸。"},{n:"犒劳自己",h:"财富-2 快乐+4",d:{wealth:-2,happy:4},narr:"你给自己买了向往已久的东西,第一次觉得赚钱真香。"},{n:"量入为出",h:"关系+2 快乐+2 财富-2（折中）",d:{wealth:-2,relation:2,happy:2},narr:"关于「第一份工资」，你不激进也不抠门，钱稳稳当当，日子也过得踏实。"}]},
+  {id:"wN_y2",dim:"wealth",rarity:"N",title:"冲动消费",stages:["青年","中年"],desc:"你看中一件心仪已久的数码新品。",opts:[{n:"果断入手",h:"财富-6 快乐+6",d:{wealth:-6,happy:6},narr:"你刷卡的那一刻爽透了,随后的半个月多少有点吃土。"},{n:"理性忍住",h:"财富+1 智慧+1",d:{wealth:1,wisdom:1},narr:"你关掉页面,省下的钱进了账户,自律感也涨了一截。"},{n:"小试身手",h:"快乐+3 智慧+1 财富-2（折中）",d:{wealth:-2,happy:3,wisdom:1},narr:"关于「冲动消费」，你拿闲钱浅浅试了下水，小赚小赔，图个乐子。"}]},
+  {id:"wN_y3",dim:"wealth",rarity:"N",title:"朋友借钱",stages:["青年","中年"],desc:"老友开口找你周转。",opts:[{n:"爽快借出",h:"财富-5 关系+4",d:{wealth:-5,relation:4},narr:"你二话不说转账,雪中送炭的情分,他记了一辈子。"},{n:"婉言拒绝",h:"关系-3 财富+2",d:{relation:-3,wealth:2},narr:"你编了理由没借,钱是保住了,两人的距离却远了些。"},{n:"借一半",h:"财富-2 关系+2",d:{wealth:-2,relation:2},narr:"你量力而行借了一半,既帮了人,也没让自己太为难。"}]},
+  {id:"wR_y1",dim:"wealth",rarity:"R",title:"房产升值",stages:["青年","中年"],desc:"你早年买的房子赶上了行情。",opts:[{n:"卖房套现",h:"财富+20 关系-3",d:{wealth:20,relation:-3},narr:"你高位出手,账户多出一笔巨款,只是告别了亲手布置的家。"},{n:"自住不动",h:"快乐+3",d:{happy:3},narr:"你没卖,守着这个有温度的家,心里踏实。"},{n:"小试身手",h:"财富+10 快乐+2 关系-1（折中）",d:{wealth:10,relation:-1,happy:2},narr:"关于「房产升值」，你拿闲钱浅浅试了下水，小赚小赔，图个乐子。"}]},
+  {id:"wR_y2",dim:"wealth",rarity:"R",title:"创业风口",stages:["青年","中年"],desc:"一个新兴赛道正处在爆发前夜。",opts:[{n:"All in 创业",h:"财富+28 快乐-3",d:{wealth:28,happy:-3},narr:"你押上身家冲进风口,几年后公司起飞,财富翻了番,人也累瘦了。"},{n:"稳妥打工",h:"财富+6",d:{wealth:6},narr:"你没冒险,领着安稳薪水,错过了暴富,也避开了崩盘。"},{n:"分散打理",h:"财富+17 快乐-1（折中）",d:{wealth:17,happy:-1},narr:"关于「创业风口」，你不把鸡蛋放一个篮子，东投一点西存一点，慢慢攒出了底气。"}]},
+  {id:"wR_m1",dim:"wealth",rarity:"R",title:"事业巅峰",stages:["中年"],desc:"你坐上了公司的关键位置。",opts:[{n:"拼命冲",h:"财富+18 健康-4",d:{wealth:18,health:-4},narr:"你拿命换业绩,年终奖厚了,体检单也薄了。"},{n:"平衡生活",h:"财富+10 快乐+2",d:{wealth:10,happy:2},narr:"你留了三分力给家庭,钱没少赚太多,日子却舒坦。"},{n:"小试身手",h:"财富+14 快乐+1 健康-2（折中）",d:{wealth:14,health:-2,happy:1},narr:"关于「事业巅峰」，你拿闲钱浅浅试了下水，小赚小赔，图个乐子。"}]},
+  {id:"wR_o1",dim:"wealth",rarity:"R",title:"退休金",stages:["暮年"],desc:"退休工资按月到账。",opts:[{n:"去旅行",h:"财富-5 快乐+6",d:{wealth:-5,happy:6},narr:"你背起行囊看山河,退休金花在风景上,值了。"},{n:"存起来",h:"财富+6",d:{wealth:6},narr:"你一分没动,存折越来越厚,留给儿孙当底气。"},{n:"量入为出",h:"财富+1 快乐+3（折中）",d:{wealth:1,happy:3},narr:"关于「退休金」，你不激进也不抠门，钱稳稳当当，日子也过得踏实。"}]},
+  {id:"wS_y1",dim:"wealth",rarity:"LEG",title:"一夜暴富",stages:["青年","中年"],desc:"你随手买的那张彩票，居然中了头奖。",opts:[{n:"高调领奖",h:"财富+40 快乐+10 关系-5",d:{wealth:40,happy:10,relation:-5},narr:"你抱回巨奖,风光无限,可也招来不少借钱的和变味的笑脸。"},{n:"匿名领取",h:"财富+35 快乐+4",d:{wealth:35,happy:4},narr:"你低调领走奖金,生活悄悄升级,却没惊动任何人。"},{n:"分散打理",h:"财富+38 快乐+7 关系-2（折中）",d:{wealth:38,happy:7,relation:-2},narr:"关于「一夜暴富」，你不把鸡蛋放一个篮子，东投一点西存一点，慢慢攒出了底气。"}]},
+  {id:"wS_m1",dim:"wealth",rarity:"LEG",title:"家族信托",stages:["中年","暮年"],desc:"一位远房长辈留给你一笔信托遗产。",opts:[{n:"全盘接受",h:"财富+30 关系-6 快乐-3",d:{wealth:30,relation:-6,happy:-3},narr:"你接下了遗产,也接下了亲戚间的闲言碎语,心里并不全然轻松。"},{n:"只取部分",h:"财富+14 智慧+4",d:{wealth:14,wisdom:4},narr:"你只拿应得的那份,清清白白,也落得个心里安稳。"},{n:"分散打理",h:"财富+22 智慧+2 关系-3 快乐-1（折中）",d:{wealth:22,relation:-3,happy:-1,wisdom:2},narr:"关于「家族信托」，你不把鸡蛋放一个篮子，东投一点西存一点，慢慢攒出了底气。"}]},
+  {id:"wS_y2",dim:"wealth",rarity:"LEG",title:"比特币早期",stages:["青年"],desc:"你很早接触到一个叫比特币的东西。",opts:[{n:"重仓买入",h:"财富+38 智慧+4",d:{wealth:38,wisdom:4},narr:"你all in了这串看不懂的代码,多年后它让你财务自由,也让你成了懂行的人。"},{n:"小试牛刀",h:"财富+8",d:{wealth:8},narr:"你只投了点零钱,涨了些,没暴富也不后悔。"},{n:"量入为出",h:"财富+23 智慧+2（折中）",d:{wealth:23,wisdom:2},narr:"关于「比特币早期」，你不激进也不抠门，钱稳稳当当，日子也过得踏实。"}]},
+  {id:"rN_c1",dim:"relation",rarity:"N",title:"邻里玩伴",stages:["童年"],desc:"隔壁的小孩常来找你玩。",opts:[{n:"热心回应",h:"关系+6 快乐+2",d:{relation:6,happy:2},narr:"你拉着小伙伴满院子跑,童年因此多了许多笑声。"},{n:"独自玩耍",h:"智慧+2",d:{wisdom:2},narr:"你更爱自己搭积木,安静里也长出了一份专注。"},{n:"保持分寸",h:"关系+3 快乐+1 智慧+1（折中）",d:{relation:3,happy:1,wisdom:1},narr:"关于「邻里玩伴」，你不远不近地相处，留了余地，也少了些纠缠。"}]},
+  {id:"rN_c2",dim:"relation",rarity:"N",title:"家庭聚餐",stages:["童年"],desc:"一家人围着饭桌吃饭聊天。",opts:[{n:"抢着说话",h:"关系+5 快乐+2",d:{relation:5,happy:2},narr:"你叽叽喳喳讲学校的事,饭桌上的暖,后来成了想家的理由。"},{n:"闷头吃饭",h:"关系+1",d:{relation:1},narr:"你不爱说话,家人也惯着你,亲情不冷,只是少了点热闹。"},{n:"真心相待",h:"关系+3 快乐+1（折中）",d:{relation:3,happy:1},narr:"关于「家庭聚餐」，你不玩虚的以诚相待，关系不热烈却长久。"}]},
+  {id:"rN_c3",dim:"relation",rarity:"N",title:"宠物伙伴",stages:["童年"],desc:"家里养了只小猫，你唤它咪咪。",opts:[{n:"悉心照料",h:"关系+4 快乐+3",d:{relation:4,happy:3},mem:{type:"pet",key:"pet_咪咪",name:"咪咪"},narr:"你喂它逗它,学会了温柔,也多了一个不会背叛的朋友。"},{n:"时冷时热",h:"快乐+1",d:{happy:1},narr:"你高兴时才理它,猫倒不在意,你也没太上心。"},{n:"随缘处之",h:"关系+2 快乐+2（折中）",d:{relation:2,happy:2},narr:"关于「宠物伙伴」，你不强求这段缘，该来的来该走的走，倒也松快。"}]},
+  {id:"rN_t1",dim:"relation",rarity:"N",title:"同学聚会",stages:["少年"],desc:"班里组织了久违的聚会。",opts:[{n:"踊跃参加",h:"关系+7 财富-3 快乐+3",d:{relation:7,wealth:-3,happy:3},narr:"你去了,和老同学勾肩搭背,钱包瘦了,人缘却胖了。"},{n:"婉拒独处",h:"关系-2 智慧+2",d:{relation:-2,wisdom:2},narr:"你没去,独自看了场电影,落了清静,也略略疏了些人。"},{n:"随缘处之",h:"关系+3 快乐+2 智慧+1 财富-1（折中）",d:{relation:3,wealth:-1,happy:2,wisdom:1},narr:"关于「同学聚会」，你不强求这段缘，该来的来该走的走，倒也松快。"}]},
+  {id:"rN_t2",dim:"relation",rarity:"N",title:"懵懂初恋",stages:["少年"],desc:"你懵懂地喜欢上了同桌。",opts:[{n:"表白心意",h:"关系+6 快乐+4 财富-2",d:{relation:6,happy:4,wealth:-2},narr:"你红着脸递出纸条,那段青涩的甜,多年后仍会想起。"},{n:"默默暗恋",h:"关系+2 智慧+1",d:{relation:2,wisdom:1},narr:"你把心思藏进课本,没说出口,却也懂了什么叫心动。"},{n:"保持分寸",h:"关系+4 快乐+2 智慧+1 财富-1（折中）",d:{relation:4,happy:2,wealth:-1,wisdom:1},narr:"关于「懵懂初恋」，你不远不近地相处，留了余地，也少了些纠缠。"}]},
+  {id:"rN_t3",dim:"relation",rarity:"N",title:"师生误会",stages:["少年"],desc:"你被老师冤枉了一回。",opts:[{n:"主动解释",h:"关系+4 智慧+2",d:{relation:4,wisdom:2},narr:"你鼓起勇气说清原委,误会解开,老师反而更信你。"},{n:"憋在心里",h:"关系-2 智慧+1",d:{relation:-2,wisdom:1},narr:"你没解释,闷了几天,学会了把委屈咽下去。"},{n:"真心相待",h:"关系+1 智慧+2（折中）",d:{relation:1,wisdom:2},narr:"关于「师生误会」，你不玩虚的以诚相待，关系不热烈却长久。"}]},
+  {id:"rN_y1",dim:"relation",rarity:"N",title:"异地恋",stages:["青年"],desc:"恋人去了远方工作，感情面临考验。",opts:[{n:"坚持异地",h:"关系+8 快乐-3 智慧+2",d:{relation:8,happy:-3,wisdom:2},narr:"你守着视频里的ta,熬过聚少离多,感情反而炼得更真。"},{n:"体面分手",h:"关系-5 快乐+2",d:{relation:-5,happy:2},narr:"你放手了,轻松了些,那段青春也正式翻了篇。"},{n:"真心相待",h:"关系+2 智慧+1（折中）",d:{relation:2,happy:0,wisdom:1},narr:"关于「异地恋」，你不玩虚的以诚相待，关系不热烈却长久。"}]},
+  {id:"rN_y2",dim:"relation",rarity:"N",title:"贵人引路",stages:["青年"],desc:"一位前辈愿意带你入行。",opts:[{n:"拜师学艺",h:"关系+6 智慧+5 财富-2",d:{relation:6,wisdom:5,wealth:-2},narr:"你认了师傅,他倾囊相授,你少走了许多弯路。"},{n:"客气往来",h:"关系+2",d:{relation:2},narr:"你保持着礼貌的距离,没深交,却也留了份人情。"},{n:"随缘处之",h:"关系+4 智慧+3 财富-1（折中）",d:{relation:4,wisdom:3,wealth:-1},narr:"关于「贵人引路」，你不强求这段缘，该来的来该走的走，倒也松快。"}]},
+  {id:"rN_y3",dim:"relation",rarity:"N",title:"闺蜜反目",stages:["青年","中年"],desc:"你和最好的朋友闹了矛盾。",opts:[{n:"主动和解",h:"关系+6 快乐+2",d:{relation:6,happy:2},narr:"你先低了头,友谊失而复得,更懂了珍惜。"},{n:"渐行渐远",h:"关系-5",d:{relation:-5},narr:"谁也没开口,你们就这样走散在人海,成了彼此的遗憾。"},{n:"保持分寸",h:"关系+1 快乐+1（折中）",d:{relation:1,happy:1},narr:"关于「闺蜜反目」，你不远不近地相处，留了余地，也少了些纠缠。"}]},
+  {id:"rN_m1",dim:"relation",rarity:"N",title:"家庭矛盾",stages:["中年"],desc:"你和伴侣争执不断。",opts:[{n:"坐下来沟通",h:"关系+6 快乐+2",d:{relation:6,happy:2},narr:"你放下脾气好好谈,疙瘩解了,家又暖了回来。"},{n:"冷战到底",h:"关系-6 快乐-3",d:{relation:-6,happy:-3},narr:"你们谁也不理谁,屋里的冷,冻坏了所有人的心情。"},{n:"真心相待",h:"关系+2（折中）",d:{relation:2,happy:0},narr:"关于「家庭矛盾」，你不玩虚的以诚相待，关系不热烈却长久。"}]},
+  {id:"rN_m2",dim:"relation",rarity:"N",title:"亲子时光",stages:["中年"],desc:"孩子盼着你能多陪陪他。",opts:[{n:"全心陪伴",h:"关系+8 财富-3 快乐+4",d:{relation:8,wealth:-3,happy:4},narr:"你放下工作陪孩子长大,丢了些应酬,却赚回了最贵的亲情。"},{n:"忙于事业",h:"关系-3 财富+4",d:{relation:-3,wealth:4},narr:"你忙着赚钱,孩子渐渐不黏你了,账户满了,心里却空了一角。"},{n:"随缘处之",h:"关系+3 财富+1 快乐+2（折中）",d:{relation:3,wealth:1,happy:2},narr:"关于「亲子时光」，你不强求这段缘，该来的来该走的走，倒也松快。"}]},
+  {id:"rN_m3",dim:"relation",rarity:"N",title:"兄弟反目",stages:["中年"],desc:"你和兄弟因家产起了争执。",opts:[{n:"各退一步",h:"关系+5 财富-2",d:{relation:5,wealth:-2},narr:"你让了步,钱少了,兄弟还在,值。"},{n:"寸土不让",h:"关系-7 财富+4",d:{relation:-7,wealth:4},narr:"你争到底,赢了家产,也输了一个从小一起长大的人。"},{n:"保持分寸",h:"财富+1 关系-1（折中）",d:{relation:-1,wealth:1},narr:"关于「兄弟反目」，你不远不近地相处，留了余地，也少了些纠缠。"}]},
+  {id:"rN_o1",dim:"relation",rarity:"N",title:"儿孙绕膝",stages:["暮年"],desc:"子孙常来探望你。",opts:[{n:"享天伦",h:"关系+8 快乐+5",d:{relation:8,happy:5},narr:"你抱着孙辈讲故事,满屋子的闹,是你晚年最暖的景。"},{n:"不愿打扰",h:"关系-2 智慧+2",d:{relation:-2,wisdom:2},narr:"你怕添麻烦少往来,落了清静,却也略显孤单。"},{n:"保持分寸",h:"关系+3 快乐+3 智慧+1（折中）",d:{relation:3,happy:3,wisdom:1},narr:"关于「儿孙绕膝」，你不远不近地相处，留了余地，也少了些纠缠。"}]},
+  {id:"rN_o2",dim:"relation",rarity:"N",title:"老友重逢",stages:["暮年"],desc:"老友组织了一次聚会。",opts:[{n:"欣然赴约",h:"关系+6 快乐+4",d:{relation:6,happy:4},narr:"你见了一帮老伙计,聊起当年笑出眼泪,仿佛又年轻了一回。"},{n:"推脱不去",h:"关系-3",d:{relation:-3},narr:"你懒得动,错过了这趟,后来多少有点可惜。"},{n:"真心相待",h:"关系+2 快乐+2（折中）",d:{relation:2,happy:2},narr:"关于「老友重逢」，你不玩虚的以诚相待，关系不热烈却长久。"}]},
+  {id:"rN_yM",dim:"relation",rarity:"R",title:"步入婚姻",stages:["青年","中年"],unique:{},desc:"你遇到想共度一生的人，决定结婚成家。",opts:[{n:"安心成家",h:"关系+10 快乐+6 财富-6",d:{relation:10,happy:6,wealth:-6},narr:"你们领了证,日子里多了柴米油盐的暖,也多了养家的担子,钱包瘦了心却定了。"},{n:"先谈恋爱",h:"关系+4 快乐+4",d:{relation:4,happy:4},narr:"你们没急于结婚,先把恋爱谈得透彻,自由着,也甜蜜着。"},{n:"闪婚冲动",h:"关系+8 快乐+8 智慧-3",d:{relation:8,happy:8,wisdom:-3},narr:"你们一时上头领了证,新鲜劲过后才慢慢学着磨合,跌撞里也有真甜。"}]},
+  {id:"rS_y1",dim:"relation",rarity:"LEG",title:"政治联姻",stages:["青年","中年"],unique:{},desc:"家族为你安排了一场门当户对的联姻。",opts:[{n:"接受安排",h:"关系+15 财富+20 快乐-6 智慧-2",d:{relation:15,wealth:20,happy:-6,wisdom:-2},narr:"你嫁入豪门,资源与钱财滚滚而来,可夜深人静时,常觉得这婚姻不大像自己的。"},{n:"拒绝联姻",h:"快乐+3 智慧+2",d:{happy:3,wisdom:2},narr:"你拒绝了安排,守住了心意,也守住了那份清贫却自在的自由。"},{n:"保持分寸",h:"关系+8 财富+10 快乐-1（折中）",d:{relation:8,wealth:10,happy:-1,wisdom:0},narr:"关于「政治联姻」，你不远不近地相处，留了余地，也少了些纠缠。"}]},
+  {id:"rS_y2",dim:"relation",rarity:"LEG",title:"救命之恩",stages:["青年","中年"],desc:"你曾在危难中救下关键人物。",opts:[{n:"结为挚友",h:"关系+12 快乐+6",d:{relation:12,happy:6},narr:"你救下的人成了生死之交,此后无论风雨,他都在你身后。"},{n:"淡然处之",h:"智慧+4",d:{wisdom:4},narr:"你觉得不过是举手之劳,没放在心上,却也多了份处变不惊的通透。"},{n:"真心相待",h:"关系+6 快乐+3 智慧+2（折中）",d:{relation:6,happy:3,wisdom:2},narr:"关于「救命之恩」，你不玩虚的以诚相待，关系不热烈却长久。"}]},
+  {id:"rS_o1",dim:"relation",rarity:"LEG",title:"丧偶之痛",stages:["暮年"],unique:{},desc:"相伴一生的人先你而去。",opts:[{n:"坦然释怀",h:"关系-10 智慧+6 快乐+2",d:{relation:-10,wisdom:6,happy:2},narr:"你送别了老伴,把思念藏进相册,在回忆里与他静静作伴,人也更通透了。"},{n:"久久沉溺",h:"关系-6 快乐-8 健康-4",d:{relation:-6,happy:-8,health:-4},narr:"你走不出那道坎,茶饭不思,身子也跟着垮了下去。"},{n:"随缘处之",h:"智慧+3 关系-8 快乐-3 健康-2（折中）",d:{relation:-8,wisdom:3,happy:-3,health:-2},narr:"关于「丧偶之痛」，你不强求这段缘，该来的来该走的走，倒也松快。"}]},
+  {id:"rS_y3",dim:"relation",rarity:"LEG",title:"跨国奇缘",stages:["青年","中年"],desc:"你在旅途中遇见了异国的人。",opts:[{n:"奔赴相爱",h:"关系+13 快乐+8 智慧+3",d:{relation:13,happy:8,wisdom:3},narr:"你跨越山海奔向ta,两种文化撞出火花,日子新鲜又滚烫。"},{n:"遗憾错过",h:"关系+3 智慧+2",d:{relation:3,wisdom:2},narr:"你没敢跨出那步,多年后想起仍觉怅然,却也多了份对缘分的敬畏。"},{n:"随缘处之",h:"关系+8 快乐+4 智慧+3（折中）",d:{relation:8,happy:4,wisdom:3},narr:"关于「跨国奇缘」，你不强求这段缘，该来的来该走的走，倒也松快。"}]},
+  {id:"kN_c1",dim:"happy",rarity:"N",title:"守着动画片",stages:["童年"],desc:"你准时守在电视前看动画。",opts:[{n:"开心地看",h:"快乐+6",d:{happy:6},narr:"你为屏幕里的冒险又哭又笑,那是童年最纯粹的快乐。"},{n:"被赶去写作业",h:"快乐-2 智慧+1",d:{happy:-2,wisdom:1},narr:"你被拎去写作业,虽不情愿,字却多认了不少。"},{n:"苦中作乐",h:"快乐+2 智慧+1（折中）",d:{happy:2,wisdom:1},narr:"关于「守着动画片」，你在不尽如人意里扒出点乐子，倒显出几分韧性。"}]},
+  {id:"kN_c2",dim:"happy",rarity:"N",title:"周末撒欢",stages:["童年"],desc:"周末你在院子里疯玩。",opts:[{n:"尽情撒欢",h:"快乐+6 健康+1",d:{happy:6,health:1},narr:"你跑跳一整天,累得倒头就睡,梦里都是笑。"},{n:"乖乖在家",h:"快乐+2",d:{happy:2},narr:"你安安静静待着,也自有一份小确幸。"},{n:"细水长流",h:"快乐+4 健康+1（折中）",d:{happy:4,health:1},narr:"关于「周末撒欢」，你不疯不淡，把快乐拆成日常的小确幸，稳稳地甜。"}]},
+  {id:"kN_c3",dim:"happy",rarity:"N",title:"收到礼物",stages:["童年"],desc:"生日你收到一份心心念念的礼物。",opts:[{n:"爱不释手",h:"快乐+7",d:{happy:7},narr:"你抱着礼物跑了整栋楼炫耀,那点欢喜亮了一整个童年。"},{n:"分享伙伴",h:"快乐+4 关系+2",d:{happy:4,relation:2},narr:"你大方分给伙伴,自己开心,也赚了一圈好人缘。"},{n:"随遇而安",h:"快乐+6 关系+1（折中）",d:{happy:6,relation:1},narr:"关于「收到礼物」，你不强求大喜也少了许多失落，平静里自有滋味。"}]},
+  {id:"kN_t1",dim:"happy",rarity:"N",title:"网络热梗",stages:["少年"],desc:"全网都在玩一个新鲜梗。",opts:[{n:"玩梗社交",h:"快乐+4 关系+2",d:{happy:4,relation:2},narr:"你玩着梗融入了圈子,快乐和友情一起涨了。"},{n:"不屑一顾",h:"智慧+1",d:{wisdom:1},narr:"你觉得无聊没凑热闹,倒显出几分清醒。"},{n:"随遇而安",h:"快乐+2 关系+1 智慧+1（折中）",d:{happy:2,relation:1,wisdom:1},narr:"关于「网络热梗」，你不强求大喜也少了许多失落，平静里自有滋味。"}]},
+  {id:"kN_t2",dim:"happy",rarity:"N",title:"朋友小聚",stages:["少年"],desc:"朋友约你周末出去放松。",opts:[{n:"出门浪一浪",h:"快乐+7 财富-3",d:{happy:7,wealth:-3},narr:"你们胡吃海喝打闹一天,钱花了,青春的热乎劲却赚满了。"},{n:"宅家歇着",h:"快乐+4",d:{happy:4},narr:"你懒得出门,窝在家里也过得舒舒服服。"},{n:"苦中作乐",h:"快乐+6 财富-1（折中）",d:{happy:6,wealth:-1},narr:"关于「朋友小聚」，你在不尽如人意里扒出点乐子，倒显出几分韧性。"}]},
+  {id:"kN_t3",dim:"happy",rarity:"N",title:"追星少年",stages:["少年"],desc:"你迷上了一个偶像。",opts:[{n:"全心追崇",h:"快乐+6 财富-3",d:{happy:6,wealth:-3},narr:"你为爱豆打榜应援,青春有了奔头,零花钱也跟着飞走。"},{n:"理性喜欢",h:"快乐+3 智慧+1",d:{happy:3,wisdom:1},narr:"你喜欢却不过度,把那股劲化成了向上的动力。"},{n:"细水长流",h:"快乐+5 智慧+1 财富-1（折中）",d:{happy:5,wealth:-1,wisdom:1},narr:"关于「追星少年」，你不疯不淡，把快乐拆成日常的小确幸，稳稳地甜。"}]},
+  {id:"kR_y1",dim:"happy",rarity:"R",title:"说走就走",stages:["青年","中年"],desc:"你突然想去看世界。",opts:[{n:"长途远行",h:"快乐+12 财富-8 智慧+3",d:{happy:12,wealth:-8,wisdom:3},narr:"你背起包走了很远,见过山河也见过自己,钱包空了灵魂却满了。"},{n:"周边短游",h:"快乐+7 财富-3",d:{happy:7,wealth:-3},narr:"你没跑太远,在近处也寻到了久违的松弛。"},{n:"随遇而安",h:"快乐+10 智慧+2 财富-5（折中）",d:{happy:10,wealth:-5,wisdom:2},narr:"关于「说走就走」，你不强求大喜也少了许多失落，平静里自有滋味。"}]},
+  {id:"kR_y2",dim:"happy",rarity:"R",title:"深耕爱好",stages:["青年","中年"],desc:"你找到一个愿意投入的圈子。",opts:[{n:"全力投入",h:"快乐+8 智慧+4 财富-2",d:{happy:8,wisdom:4,wealth:-2},narr:"你一头扎进热爱里,技艺见长,人也因为『有事可做』而闪闪发光。"},{n:"浅尝辄止",h:"快乐+4",d:{happy:4},narr:"你玩玩就放下了,图个乐,倒也轻松。"},{n:"苦中作乐",h:"快乐+6 智慧+2 财富-1（折中）",d:{happy:6,wisdom:2,wealth:-1},narr:"关于「深耕爱好」，你在不尽如人意里扒出点乐子，倒显出几分韧性。"}]},
+  {id:"kR_m1",dim:"happy",rarity:"R",title:"中年解压",stages:["中年"],desc:"你培养了一个解压的小爱好。",opts:[{n:"认真投入",h:"快乐+8 健康+2",d:{happy:8,health:2},narr:"你钓钓鱼、种种花,把中年那点紧绷,悄悄松了开来。"},{n:"凑合就好",h:"快乐+3",d:{happy:3},narr:"你随便解解闷,稍有舒缓,也就够了。"},{n:"随遇而安",h:"快乐+6 健康+1（折中）",d:{happy:6,health:1},narr:"关于「中年解压」，你不强求大喜也少了许多失落，平静里自有滋味。"}]},
+  {id:"kR_o1",dim:"happy",rarity:"R",title:"含饴弄孙",stages:["暮年"],desc:"陪孙辈玩耍让你其乐融融。",opts:[{n:"尽情享受",h:"快乐+10 关系+4",d:{happy:10,relation:4},narr:"你和孙辈在地上打滚,那种不加修饰的天真,把你也逗回了童年。"},{n:"一旁旁观",h:"快乐+4",d:{happy:4},narr:"你坐着看他们闹,嘴角也一直挂着笑。"},{n:"细水长流",h:"快乐+7 关系+2（折中）",d:{happy:7,relation:2},narr:"关于「含饴弄孙」，你不疯不淡，把快乐拆成日常的小确幸，稳稳地甜。"}]},
+  {id:"kS_y1",dim:"happy",rarity:"LEG",title:"顿悟时刻",stages:["青年","中年","暮年"],desc:"某天你突然想通了一直困住自己的事。",opts:[{n:"大彻大悟",h:"快乐+18 智慧+10 财富-4",d:{happy:18,wisdom:10,wealth:-4},narr:"你像被光照亮,多年的心结一下子松了,人轻快了,看什么都顺了,为此散点财也不在乎。"},{n:"半信半疑",h:"快乐+6",d:{happy:6},narr:"你似懂非懂,苦闷淡了些,日子因而轻快了几分。"},{n:"苦中作乐",h:"快乐+12 智慧+5 财富-2（折中）",d:{happy:12,wisdom:5,wealth:-2},narr:"关于「顿悟时刻」，你在不尽如人意里扒出点乐子，倒显出几分韧性。"}]},
+  {id:"kS_m1",dim:"happy",rarity:"LEG",title:"圆梦舞台",stages:["中年","暮年"],desc:"你站上了向往已久的舞台中央。",opts:[{n:"尽情绽放",h:"快乐+16 关系+6 财富-6",d:{happy:16,relation:6,wealth:-6},narr:"聚光灯打在你身上,台下掌声雷动,这一刻你等了一辈子,花多少钱都值。"},{n:"默默支持",h:"快乐+8 关系+3",d:{happy:8,relation:3},narr:"你甘当幕后,看别人发光也满心欢喜,温柔了别人也安顿了自己。"},{n:"苦中作乐",h:"快乐+12 关系+5 财富-3（折中）",d:{happy:12,relation:5,wealth:-3},narr:"关于「圆梦舞台」，你在不尽如人意里扒出点乐子，倒显出几分韧性。"}]},
+  {id:"kS_y2",dim:"happy",rarity:"LEG",title:"重生体验",stages:["青年","中年"],desc:"一段特殊经历让你像重活了一回。",opts:[{n:"彻底重启",h:"快乐+15 智慧+6 财富-5",d:{happy:15,wisdom:6,wealth:-5},narr:"你扔掉旧身份,按想要的方式重过,爽是爽了,也为此付出了不小代价。"},{n:"微调生活",h:"快乐+9 智慧+3",d:{happy:9,wisdom:3},narr:"你没大改,只把讨厌的部分挪开,轻巧地让自己舒服了些。"},{n:"细水长流",h:"快乐+12 智慧+5 财富-2（折中）",d:{happy:12,wisdom:5,wealth:-2},narr:"关于「重生体验」，你不疯不淡，把快乐拆成日常的小确幸，稳稳地甜。"}]},
+  {id:"zN_c1",dim:"wisdom",rarity:"N",title:"读书启蒙",stages:["童年"],desc:"爸妈陪你读绘本、认字。",opts:[{n:"听得入迷",h:"智慧+5 快乐+1",d:{wisdom:5,happy:1},narr:"你趴在爸妈膝头听故事,小小的脑袋里,世界一点点展开。"},{n:"东张西望",h:"快乐+1",d:{happy:1},narr:"你坐不住,书没看几页,倒把窗外的麻雀看了个够。"},{n:"静观其变",h:"智慧+3 快乐+1（折中）",d:{wisdom:3,happy:1},narr:"关于「读书启蒙」，你不急着下结论多看多想，反倒少走了弯路。"}]},
+  {id:"zN_c2",dim:"wisdom",rarity:"N",title:"十万个为什么",stages:["童年"],desc:"你对世界充满好奇，问题不断。",opts:[{n:"追着问",h:"智慧+5",d:{wisdom:5},narr:"你把大人们问到词穷,求知欲像野草一样疯长。"},{n:"随意翻过",h:"快乐+1",d:{happy:1},narr:"你懒得深究,囫囵吞枣,快乐是有了,学问却浅了。"},{n:"边做边学",h:"智慧+3 快乐+1（折中）",d:{wisdom:3,happy:1},narr:"关于「十万个为什么」，你不空想也不死读，在事上磨，慢慢长出了见识。"}]},
+  {id:"zN_c3",dim:"wisdom",rarity:"N",title:"拼图迷宫",stages:["童年"],desc:"你迷上了各种益智玩具。",opts:[{n:"钻研解法",h:"智慧+4 快乐+1",d:{wisdom:4,happy:1},narr:"你一遍遍试错拼出全图,逻辑和耐心都悄悄长了。"},{n:"胡乱拼凑",h:"快乐+1",d:{happy:1},narr:"你随便摆弄,图个手感,倒也乐在其中。"},{n:"博采众长",h:"智慧+2 快乐+1（折中）",d:{wisdom:2,happy:1},narr:"关于「拼图迷宫」，你四处汲取不偏信一家，眼界一点点被撑开。"}]},
+  {id:"zN_t1",dim:"wisdom",rarity:"N",title:"读书习惯",stages:["少年"],desc:"书架上的书落了灰，你决定拾起来。",opts:[{n:"每天阅读",h:"智慧+7 快乐+2",d:{wisdom:7,happy:2},narr:"你给自己定了读书计划,眼界一天天被撑大,也多了份沉静。"},{n:"偶尔翻翻",h:"智慧+3",d:{wisdom:3},narr:"你心血来潮翻几页,聊胜于无,也算和书做了朋友。"},{n:"博采众长",h:"智慧+5 快乐+1（折中）",d:{wisdom:5,happy:1},narr:"关于「读书习惯」，你四处汲取不偏信一家，眼界一点点被撑开。"}]},
+  {id:"zN_t2",dim:"wisdom",rarity:"N",title:"大考临近",stages:["少年"],desc:"一场重要的考试摆在眼前。",opts:[{n:"埋头苦读",h:"智慧+6 快乐-2",d:{wisdom:6,happy:-2},narr:"你悬梁刺股熬过复习,分数涨了,黑眼圈也重了。"},{n:"摆烂躺平",h:"智慧+1 快乐+3",d:{wisdom:1,happy:3},narr:"你没太当回事,轻松是轻松,知识点却漏了不少。"},{n:"静观其变",h:"智慧+4 快乐+1（折中）",d:{wisdom:4,happy:1},narr:"关于「大考临近」，你不急着下结论多看多想，反倒少走了弯路。"}]},
+  {id:"zN_t3",dim:"wisdom",rarity:"N",title:"辩论赛",stages:["少年"],desc:"班里组织了一场辩论赛。",opts:[{n:"积极备战",h:"智慧+5 关系+2",d:{wisdom:5,relation:2},narr:"你和队友查资料对练,口才和交情一起见长。"},{n:"旁观鼓掌",h:"智慧+1",d:{wisdom:1},narr:"你没上场,在台下看得津津有味,也算长了见识。"},{n:"边做边学",h:"智慧+3 关系+1（折中）",d:{wisdom:3,relation:1},narr:"关于「辩论赛」，你不空想也不死读，在事上磨，慢慢长出了见识。"}]},
+  {id:"zR_y1",dim:"wisdom",rarity:"R",title:"名校进修",stages:["青年","中年"],desc:"你拿到一个深造的机会。",opts:[{n:"脱产读研",h:"智慧+12 财富-10 关系-2",d:{wisdom:12,wealth:-10,relation:-2},narr:"你暂停工作重回校园,学识厚了,存款薄了,也暂时淡了些社交。"},{n:"不读了",h:"快乐+2",d:{happy:2},narr:"你权衡后没去,留在本职,轻松里也少了一场蜕变。"},{n:"博采众长",h:"智慧+6 快乐+1 财富-5 关系-1（折中）",d:{wisdom:6,wealth:-5,relation:-1,happy:1},narr:"关于「名校进修」，你四处汲取不偏信一家，眼界一点点被撑开。"}]},
+  {id:"zR_y2",dim:"wisdom",rarity:"R",title:"跨界学习",stages:["青年","中年"],desc:"你跨界学了一项新技能。",opts:[{n:"认真钻研",h:"智慧+9 财富+3",d:{wisdom:9,wealth:3},narr:"你啃下新领域,本事成了跳槽加薪的筹码,脑子也更活了。"},{n:"走马观花",h:"智慧+2",d:{wisdom:2},narr:"你浅浅学了点皮毛,聊以自娱,没深用。"},{n:"静观其变",h:"智慧+6 财富+2（折中）",d:{wisdom:6,wealth:2},narr:"关于「跨界学习」，你不急着下结论多看多想，反倒少走了弯路。"}]},
+  {id:"zR_m1",dim:"wisdom",rarity:"R",title:"复盘反思",stages:["中年"],desc:"你开始记录每天的想法。",opts:[{n:"坚持写日记",h:"智慧+6 快乐+2",d:{wisdom:6,happy:2},narr:"你每晚复盘,把经历熬成经验,人也越来越通透从容。"},{n:"懒得动笔",h:"快乐+1",d:{happy:1},narr:"你想过没写,日子照过,只是少了一面照见自己的镜子。"},{n:"博采众长",h:"智慧+3 快乐+2（折中）",d:{wisdom:3,happy:2},narr:"关于「复盘反思」，你四处汲取不偏信一家，眼界一点点被撑开。"}]},
+  {id:"zR_o1",dim:"wisdom",rarity:"R",title:"提笔写回忆录",stages:["暮年"],desc:"你决定把一生写下来。",opts:[{n:"认真书写",h:"智慧+10 快乐+3",d:{wisdom:10,happy:3},narr:"你一笔一笔写尽悲欢,回望中读懂了自己,也安顿了往事。"},{n:"口述记录",h:"智慧+5 关系+2",d:{wisdom:5,relation:2},narr:"你讲子孙记,故事在代际间流走,亲情也跟着厚了。"},{n:"边做边学",h:"智慧+8 快乐+2 关系+1（折中）",d:{wisdom:8,happy:2,relation:1},narr:"关于「提笔写回忆录」，你不空想也不死读，在事上磨，慢慢长出了见识。"}]},
+  {id:"zS_y1",dim:"wisdom",rarity:"LEG",title:"大师指点",stages:["青年","中年"],desc:"一位泰斗愿收你入门。",opts:[{n:"拜入门下",h:"智慧+18 关系+4 财富-5",d:{wisdom:18,relation:4,wealth:-5},narr:"你得了真传,眼界格局被彻底打开,为此投入的时间金钱,都成了最值的投资。"},{n:"旁听而已",h:"智慧+8",d:{wisdom:8},narr:"你没正式入门,只在门外偷师,也够受用半生。"},{n:"静观其变",h:"智慧+13 关系+2 财富-2（折中）",d:{wisdom:13,relation:2,wealth:-2},narr:"关于「大师指点」，你不急着下结论多看多想，反倒少走了弯路。"}]},
+  {id:"zS_m1",dim:"wisdom",rarity:"LEG",title:"范式颠覆",stages:["中年","暮年"],desc:"你接触到了颠覆认知的新思想。",opts:[{n:"全然接纳",h:"智慧+16 快乐+4 关系-3",d:{wisdom:16,happy:4,relation:-3},narr:"你被新世界击中,认知彻底重组,身边有些人却渐渐听不懂你了。"},{n:"本能抵触",h:"智慧+3 快乐-2",d:{wisdom:3,happy:-2},narr:"你本能地抗拒,守住了旧认知的安稳,却也错失了一次开窍。"},{n:"静观其变",h:"智慧+10 快乐+1 关系-1（折中）",d:{wisdom:10,happy:1,relation:-1},narr:"关于「范式颠覆」，你不急着下结论多看多想，反倒少走了弯路。"}]},
+  {id:"zS_o1",dim:"wisdom",rarity:"LEG",title:"智者暮年",stages:["暮年"],desc:"岁月让你变得通透而平和。",opts:[{n:"传道授业",h:"智慧+14 关系+4",d:{wisdom:14,relation:4},narr:"你把一生领悟讲给后辈听,在传承里,自己的生命也得到了延长。"},{n:"独自体悟",h:"智慧+10",d:{wisdom:10},narr:"你静坐观心,把得失看淡,活成了一份旁人难及的从容。"},{n:"博采众长",h:"智慧+12 关系+2（折中）",d:{wisdom:12,relation:2},narr:"关于「智者暮年」，你四处汲取不偏信一家，眼界一点点被撑开。"}]},
+    {id:"zS_y2",dim:"wisdom",rarity:"LEG",title:"时空回响",stages:["青年","中年"],desc:"一段奇遇让你窥见了未来的轮廓。",opts:[{n:"顺势布局",h:"智慧+15 财富+6",d:{wisdom:15,wealth:6},narr:"你借着那点『先知』提前落子,人生少走了许多弯路,也悄悄富了起来。"},{n:"守口如瓶",h:"智慧+8 快乐+2",d:{wisdom:8,happy:2},narr:"你把秘密烂在肚里,只悄悄修正了自己的选择,活得明白也活得安稳。"},{n:"边做边学",h:"智慧+12 财富+3 快乐+1（折中）",d:{wisdom:12,wealth:3,happy:1},narr:"关于「时空回响」，你不空想也不死读，在事上磨，慢慢长出了见识。"}]},
+
+  /* ============ 超稀有 SR / 史诗 EP / 神话 MY 卡（6 档稀有度落地，使抽卡权重真正生效） ============ */
+  {id:"hSR_y1",dim:"health",rarity:"SR",title:"天生体能",stages:["少年","青年","中年"],desc:"你似乎天生比旁人多了股韧劲。",opts:[{n:"刻意磨炼",h:"健康+13 快乐+2",d:{health:13,happy:2},narr:"你把这天赋往死里练，身手愈发矫健，练完还挺爽。"},{n:"顺其自然",h:"健康+7 智慧+1",d:{health:7,wisdom:1},narr:"你没强求，天赋却也让你比同龄人硬朗一截。"},{n:"小试身手",h:"健康+9 财富-2",d:{health:9,wealth:-2},narr:"你偶尔炫技，赢得喝彩，也小小破费了回。"}]},
+  {id:"hSR_m1",dim:"health",rarity:"SR",title:"回春体质",stages:["中年","暮年"],desc:"同龄人开始衰老，你却像被时光遗忘。",opts:[{n:"好好珍惜",h:"健康+14",d:{health:14},narr:"你惜福，作息规律，这副身子骨替你省了太多苦头。"},{n:"透支享乐",h:"健康+8 快乐+4",d:{health:8,happy:4},narr:"你仗着底子好放肆玩，爽是爽了，根基悄悄松了。"},{n:"随遇而安",h:"健康+10 智慧+1",d:{health:10,wisdom:1},narr:"你不骄不躁，把这份幸运化作了从容。"}]},
+  {id:"hSR_o1",dim:"health",rarity:"SR",title:"寿星之相",stages:["暮年"],desc:"街坊都说你能活过九十九。",opts:[{n:"乐天知命",h:"健康+12 快乐+3",d:{health:12,happy:3},narr:"你笑呵呵地过，心宽体胖，日子蜜一样甜。"},{n:"过度养生",h:"健康+6 财富-3",d:{health:6,wealth:-3},narr:"你迷信各种补品，钱花了，身子倒是没差。"},{n:"顺其自然",h:"健康+9",d:{health:9},narr:"你不折腾，该吃吃该睡睡，反倒松松快活。"}]},
+  {id:"hEP_y1",dim:"health",rarity:"EP",title:"异能体魄",stages:["少年","青年","中年"],desc:"一次意外后，你发现自己恢复力惊人。",opts:[{n:"开发潜能",h:"健康+18 智慧+3",d:{health:18,wisdom:3},narr:"你狠练这身怪力，伤病来得快去得也快，人也更懂自己。"},{n:"低调藏拙",h:"健康+9 关系-1",d:{health:9,relation:-1},narr:"你怕招眼，藏着掖着，身子悄悄强了，人却更独了。"},{n:"适度利用",h:"健康+13 财富+2",d:{health:13,wealth:2},narr:"你拿这能力做点稳当差事，强身又小赚。"}]},
+  {id:"hEP_m1",dim:"health",rarity:"EP",title:"生命方舟",stages:["中年","暮年"],desc:"你参与了一项延寿实验，成了受益者。",opts:[{n:"全心配合",h:"健康+20 财富-6",d:{health:20,wealth:-6},narr:"你当小白鼠般配合，换回一副逆龄身子，钱包瘦了些。"},{n:"半信半疑",h:"健康+10",d:{health:10},narr:"你半推半就，好处也沾了边，不功不过。"},{n:"谨慎退出",h:"健康+5 智慧+3",d:{health:5,wisdom:3},narr:"你中途撤了，虽错过红利，却多了份清醒。"}]},
+  {id:"hMY_y1",dim:"health",rarity:"MY",title:"不死之身",stages:["青年","中年","暮年"],desc:"命运的偏爱落在你头上——你似乎很难真正死去。",opts:[{n:"纵情驰骋",h:"健康+25 快乐+6 财富-5",d:{health:25,happy:6,wealth:-5},narr:"你拿命去野，撞了无数回都活蹦乱跳，活得比谁都放肆。"},{n:"惜命如金",h:"健康+16 智慧+4",d:{health:16,wisdom:4},narr:"你珍惜这份眷顾，活得克制而通透，把日子过成了修行。"},{n:"顺其自然",h:"健康+20 快乐+2",d:{health:20,happy:2},narr:"你不张扬也不糟蹋，这份幸运平平淡淡地护了你一生。"}]},
+
+  {id:"wSR_y1",dim:"wealth",rarity:"SR",title:"偏财不断",stages:["青年","中年"],desc:"你似乎总能在不经意间碰上小财运。",opts:[{n:"见好就收",h:"财富+14 智慧+2",d:{wealth:14,wisdom:2},narr:"你踩准节奏落袋为安，小富即安，心里踏实。"},{n:"乘胜追击",h:"财富+20 关系-2",d:{wealth:20,relation:-2},narr:"你一路加码，赚得盆满钵满，却也少了几分人情味。"},{n:"随手散财",h:"财富+8 关系+4",d:{wealth:8,relation:4},narr:"你赚了就花在朋友身上，钱流动起来，人缘也旺了。"}]},
+  {id:"wSR_m1",dim:"wealth",rarity:"SR",title:"隐形富户",stages:["中年","暮年"],desc:"早年埋下的资产，如今悄悄开花。",opts:[{n:"稳妥收息",h:"财富+16 快乐+2",d:{wealth:16,happy:2},narr:"你坐收分红，日子宽裕，连眉头都舒展了。"},{n:"再投一把",h:"财富+24 快乐-2",d:{wealth:24,happy:-2},narr:"你把钱又滚进新局，雪球越滚越大，人也更紧绷。"},{n:"乐善好施",h:"财富+9 关系+5",d:{wealth:9,relation:5},narr:"你散了些财做功德，旁人念你的好，自己也得安稳。"}]},
+  {id:"wSR_o1",dim:"wealth",rarity:"SR",title:"晚年有产",stages:["暮年"],desc:"你早年的布局，让晚年不愁吃穿。",opts:[{n:"含饴弄孙",h:"财富+8 快乐+5",d:{wealth:8,happy:5},narr:"你用余钱宠着孙辈，屋里热闹，心里也暖。"},{n:"精打细算",h:"财富+14",d:{wealth:14},narr:"你一分掰成两半花，存折越来越厚，底气十足。"},{n:"随遇而安",h:"财富+6 快乐+2",d:{wealth:6,happy:2},narr:"你不抠不奢，钱够花就好，图个舒心。"}]},
+  {id:"wEP_y1",dim:"wealth",rarity:"EP",title:"资本运作",stages:["青年","中年"],desc:"你摸到了资本游戏的门道。",opts:[{n:"长线布局",h:"财富+26 智慧+4",d:{wealth:26,wisdom:4},narr:"你耐住性子布长线，几年后资产翻倍，眼界也开了。"},{n:"快进快出",h:"财富+18 快乐-1",d:{wealth:18,happy:-1},narr:"你追涨杀跌赚快钱，落袋时爽，却有根神经一直绷着。"},{n:"稳健配置",h:"财富+20 关系+1",d:{wealth:20,relation:1},narr:"你不贪不慌，东投一点西存一点，慢慢攒出了底气。"}]},
+  {id:"wEP_m1",dim:"wealth",rarity:"EP",title:"家族企业",stages:["中年","暮年"],desc:"你接手了家族生意，成为掌舵人。",opts:[{n:"锐意改革",h:"财富+28 健康-3",d:{wealth:28,health:-3},narr:"你大刀阔斧，家业蒸蒸日上，自己却累掉了肉。"},{n:"守成维稳",h:"财富+16 快乐+2",d:{wealth:16,happy:2},narr:"你求稳不求快，家业稳稳当当，日子也舒坦。"},{n:"分权共治",h:"财富+20 关系+3",d:{wealth:20,relation:3},narr:"你放权给族人，钱照赚，亲情也没散。"}]},
+  {id:"wMY_y1",dim:"wealth",rarity:"MY",title:"点石成金",stages:["青年","中年","暮年"],desc:"你仿佛被财神附体，所投皆涨。",opts:[{n:"富甲一方",h:"财富+40 关系-4 快乐+4",d:{wealth:40,relation:-4,happy:4},narr:"你富得流油，世人仰慕，可真心的笑脸却少了。"},{n:"闷声发财",h:"财富+32 智慧+3",d:{wealth:32,wisdom:3},narr:"你低调敛财，不显山不露水，心里门儿清。"},{n:"取之有道",h:"财富+34 关系+3 智慧+2",d:{wealth:34,relation:3,wisdom:2},narr:"你赚钱也救人，金银与口碑一起涨，活得敞亮。"}]},
+
+  {id:"rSR_y1",dim:"relation",rarity:"SR",title:"良师益友",stages:["青年","中年"],desc:"生命里出现一位亦师亦友的贵人。",opts:[{n:"倾心相交",h:"关系+13 智慧+3",d:{relation:13,wisdom:3},narr:"你视他如兄长，他倾囊相授，你少走了十年弯路。"},{n:"保持距离",h:"关系+6 智慧+1",d:{relation:6,wisdom:1},narr:"你敬而远之，得了些指点，也没深陷人情债。"},{n:"雪中送炭",h:"关系+9 财富-2",d:{relation:9,wealth:-2},narr:"你在他落难时帮了一把，反赚回一生信任。"}]},
+  {id:"rSR_m1",dim:"relation",rarity:"SR",title:"儿孙满堂",stages:["中年","暮年"],desc:"你的孩子成家，家里添了新丁。",opts:[{n:"含饴弄孙",h:"关系+14 快乐+4",d:{relation:14,happy:4},narr:"你抱着孙辈乐不可支，屋里的笑声把孤单都赶跑了。"},{n:"放手成全",h:"关系+8 智慧+2",d:{relation:8,wisdom:2},narr:"你体面地退出子女生活，给他们空间，自己也得了清静。"},{n:"操心过度",h:"关系+6 健康-2",d:{relation:6,health:-2},narr:"你大事小情都要管，家是齐了，身子却操劳了。"}]},
+  {id:"rEP_y1",dim:"relation",rarity:"EP",title:"生死之交",stages:["青年","中年"],desc:"危难中你与某人结下过命交情。",opts:[{n:"肝胆相照",h:"关系+18 快乐+4",d:{relation:18,happy:4},narr:"你拿命护他，他亦如此，这份情成了你后半生的铠甲。"},{n:"各自珍重",h:"关系+8 智慧+2",d:{relation:8,wisdom:2},narr:"你没把话说破，却把这份义气藏进了骨子里。"},{n:"以恩报恩",h:"关系+13 财富-3",d:{relation:13,wealth:-3},narr:"你倾力回报，情谊更深，只是破费了些。"}]},
+  {id:"rEP_o1",dim:"relation",rarity:"EP",title:"德高望重",stages:["暮年"],desc:"你成了邻里口中的老好人。",opts:[{n:"乐善好施",h:"关系+16 快乐+3",d:{relation:16,happy:3},narr:"你帮了一辈子人，到老人人敬你，门槛都被踏破。"},{n:"淡泊自守",h:"关系+8 智慧+3",d:{relation:8,wisdom:3},narr:"你不爱热闹，独善其身，倒也落得自在。"},{n:"受人敬仰",h:"关系+12 智慧+2",d:{relation:12,wisdom:2},narr:"你言行有尺，后辈都愿听你两句，晚年不孤。"}]},
+  {id:"rMY_y1",dim:"relation",rarity:"MY",title:"万人迷",stages:["青年","中年","暮年"],desc:"你天生有种让人靠近就安心的魔力。",opts:[{n:"广结善缘",h:"关系+24 快乐+6 财富+2",d:{relation:24,happy:6,wealth:2},narr:"你走到哪都有人簇拥，人缘旺成了你的底气。"},{n:"独宠一人",h:"关系+18 快乐+5",d:{relation:18,happy:5},narr:"你把这魔力只给一个人，那份专一比万般热闹更甜。"},{n:"自在独行",h:"关系+12 智慧+4",d:{relation:12,wisdom:4},narr:"你不必讨好谁，却自然让人想靠近，活得通透。"}]},
+
+  {id:"kSR_y1",dim:"happy",rarity:"SR",title:"心流状态",stages:["青年","中年"],desc:"你找到了一件让自己忘我投入的事。",opts:[{n:"沉浸其中",h:"快乐+13 智慧+3",d:{happy:13,wisdom:3},narr:"你一头扎进去，时间在指尖流过，人也因为『有事做』而发光。"},{n:"浅尝辄止",h:"快乐+6",d:{happy:6},narr:"你玩玩就放下了，图个乐，倒也轻松。"},{n:"以之为业",h:"快乐+11 财富+2",d:{happy:11,wealth:2},narr:"你把热爱变成饭碗，赚得不多却天天开心。"}]},
+  {id:"kSR_m1",dim:"happy",rarity:"SR",title:"苦中作乐",stages:["中年","暮年"],desc:"你练就了在琐碎里挖快乐的本事。",opts:[{n:"知足常乐",h:"快乐+13 健康+1",d:{happy:13,health:1},narr:"你总能从柴米油盐里扒出甜，眉间愁纹都浅了。"},{n:"强颜欢笑",h:"快乐+6 健康-1",d:{happy:6,health:-1},narr:"你表面笑嘻嘻，心事却压在了夜里。"},{n:"随遇而安",h:"快乐+9 智慧+1",d:{happy:9,wisdom:1},narr:"你不争不怨，日子清苦也过得有滋有味。"}]},
+  {id:"kSR_o1",dim:"happy",rarity:"SR",title:"天伦之乐",stages:["暮年"],desc:"晚年你被温情环绕，笑口常开。",opts:[{n:"享尽团圆",h:"快乐+14 关系+4",d:{happy:14,relation:4},narr:"你被儿孙捧在掌心，那种不加修饰的热乎，把你也逗回了童年。"},{n:"旁观其乐",h:"快乐+8",d:{happy:8},narr:"你坐着看他们闹，嘴角一直挂着笑。"},{n:"细水长流",h:"快乐+10 关系+2",d:{happy:10,relation:2},narr:"你不疯不淡，把欢喜拆成日常的小确幸，稳稳地甜。"}]},
+  {id:"kEP_y1",dim:"happy",rarity:"EP",title:"妙手偶得",stages:["青年","中年"],desc:"你偶然撞见了一处只属于你的快乐源泉。",opts:[{n:"悉心经营",h:"快乐+18 智慧+4",d:{happy:18,wisdom:4},narr:"你把这点小确幸养成大欢喜，整个人都透着光。"},{n:"昙花一现",h:"快乐+9",d:{happy:9},narr:"你享受了那一瞬的亮，过后虽淡，也够回味。"},{n:"与人同享",h:"快乐+14 关系+3",d:{happy:14,relation:3},narr:"你把快乐分出去，单人乐成了众人乐，暖了也旺了。"}]},
+  {id:"kEP_o1",dim:"happy",rarity:"EP",title:"怡然自得",stages:["暮年"],desc:"你活成了旁人羡慕的松弛模样。",opts:[{n:"安度晚年",h:"快乐+16 健康+2",d:{happy:16,health:2},narr:"你无欲无求，连晒太阳都晒出滋味，身子也舒坦。"},{n:"余热生辉",h:"快乐+12 关系+3",d:{happy:12,relation:3},narr:"你发挥余热帮衬旁人，被需要的感觉让你年轻。"},{n:"顺其自然",h:"快乐+13",d:{happy:13},narr:"你不强求，该来的乐子自然来，日子松快。"}]},
+  {id:"kMY_y1",dim:"happy",rarity:"MY",title:"欢喜无量",stages:["青年","中年","暮年"],desc:"你好像天生被快乐眷顾，愁事绕着你走。",opts:[{n:"尽情张扬",h:"快乐+24 关系+5 财富-3",d:{happy:24,relation:5,wealth:-3},narr:"你把欢喜洒得到处都是，人人爱跟你待着，就是有点费钱。"},{n:"内敛温润",h:"快乐+18 智慧+4",d:{happy:18,wisdom:4},narr:"你笑不张扬，却把那份暖稳稳揣在怀里，越活越透亮。"},{n:"普度欢喜",h:"快乐+20 关系+6",d:{happy:20,relation:6},narr:"你把快乐传给周遭，自己成了别人的小太阳，双向奔赴。"}]},
+
+  {id:"zSR_y1",dim:"wisdom",rarity:"SR",title:"早慧",stages:["青年","中年"],desc:"你比同龄人更早想通了许多事。",opts:[{n:"沉淀内化",h:"智慧+13 快乐+1",d:{wisdom:13,happy:1},narr:"你把早慧化作沉稳，遇事不慌，旁人都说你老成。"},{n:"恃才傲物",h:"智慧+8 关系-2",d:{wisdom:8,relation:-2},narr:"你聪明挂在脸上，惹了些侧目，人缘打了折。"},{n:"低调藏锋",h:"智慧+10",d:{wisdom:10},narr:"你敛着锋芒，本事在肚里，不显山不露水。"}]},
+  {id:"zSR_m1",dim:"wisdom",rarity:"SR",title:"阅历生慧",stages:["中年","暮年"],desc:"半生跌撞，把你磨出了通透。",opts:[{n:"复盘自省",h:"智慧+14 快乐+2",d:{wisdom:14,happy:2},narr:"你把经历熬成见识，人越来越从容，眉间也松了。"},{n:"故步自封",h:"智慧+7",d:{wisdom:7},narr:"你守着旧经验，没再长进，倒也稳当。"},{n:"传道授业",h:"智慧+11 关系+3",d:{wisdom:11,relation:3},narr:"你把悟到的讲给后辈，在传承里自己也更深了一层。"}]},
+  {id:"zSR_o1",dim:"wisdom",rarity:"SR",title:"老而弥明",stages:["暮年"],desc:"岁月让你越老越清醒。",opts:[{n:"静坐观心",h:"智慧+13 快乐+2",d:{wisdom:13,happy:2},narr:"你每日打坐省身，把得失看淡，活成旁人难及的从容。"},{n:"著书立说",h:"智慧+10 关系+2",d:{wisdom:10,relation:2},narr:"你把一生写成字，后人读着，你也在文字里续了命。"},{n:"随遇而安",h:"智慧+9 快乐+1",d:{wisdom:9,happy:1},narr:"你不执着，顺其自然，糊涂里也有大清醒。"}]},
+  {id:"zEP_y1",dim:"wisdom",rarity:"EP",title:"格物致知",stages:["青年","中年"],desc:"你对世界本质产生了近乎偏执的好奇。",opts:[{n:"穷究到底",h:"智慧+18 财富-3",d:{wisdom:18,wealth:-3},narr:"你钻进真理的牛角尖，学问深了，钱袋子却瘪了。"},{n:"学以致用",h:"智慧+12 财富+4",d:{wisdom:12,wealth:4},narr:"你把所悟变成本事，既长了脑子也鼓了腰包。"},{n:"浅尝辄止",h:"智慧+9",d:{wisdom:9},narr:"你只取所需，够用就好，倒也轻松。"}]},
+  {id:"zEP_o1",dim:"wisdom",rarity:"EP",title:"大彻大悟",stages:["暮年"],desc:"你在一件小事上，忽然通了天机。",opts:[{n:"看破放下",h:"智慧+16 快乐+5",d:{wisdom:16,happy:5},narr:"你像被光照亮，多年的心结一下子松了，人轻快了，看啥都顺。"},{n:"只可意会",h:"智慧+10 关系+1",d:{wisdom:10,relation:1},narr:"你说不清那感觉，只觉心里亮堂了，待人也更温和。"},{n:"笑而不语",h:"智慧+12",d:{wisdom:12},narr:"你守着这份通透，不与人辩，自己偷着乐。"}]},
+  {id:"zMY_y1",dim:"wisdom",rarity:"MY",title:"通晓万物",stages:["青年","中年","暮年"],desc:"你好似生来便懂了许多不该懂的。",opts:[{n:"执掌乾坤",h:"智慧+24 关系-2 财富+4",d:{wisdom:24,relation:-2,wealth:4},narr:"你凭这份通透明镜般看透人心，掌了大局，却也少了真朋友。"},{n:"大智若愚",h:"智慧+18 快乐+4",d:{wisdom:18,happy:4},narr:"你装傻充愣，把聪明藏在憨笑里，活得最是自在。"},{n:"泽被后世",h:"智慧+20 关系+4",d:{wisdom:20,relation:4},narr:"你把所悟写成养分，后人乘凉，你也在传承里得了永生。"}]},
+  /* —— 补充：稀有 R（补足财富缺口 + 关系平衡 + 创业起点） —— */
+  {id:"wR_f1",dim:"wealth",rarity:"R",title:"下海创业",stages:["青年","中年"],desc:"你辞去安稳工作，想自己干一番事业。",opts:[{n:"认真经营",h:"财富+10 智慧+3",d:{wealth:10,wisdom:3},flag:"founded",narr:"你注册了公司，从零学起，账本与梦想一起慢慢长大。"},{n:"边做边试",h:"财富+7 健康-1",d:{wealth:7,health:-1},narr:"你小步快跑，在试错里慢慢摸清了门道。"},{n:"及时止损",h:"财富+3 快乐+2",d:{wealth:3,happy:2},narr:"你见势不对收了手，少亏即是赚。"}]},
+  {id:"wR_f2",dim:"wealth",rarity:"R",title:"升职加薪",stages:["青年","中年"],desc:"你在单位熬成了顶梁柱。",opts:[{n:"力争上游",h:"财富+9 健康-2",d:{wealth:9,health:-2},narr:"你拼绩效，薪水涨了，黑眼圈也重了。"},{n:"安稳度日",h:"财富+6 快乐+1",d:{wealth:6,happy:1},narr:"你不争不抢，工资稳稳涨，心里也松。"},{n:"跳槽涨薪",h:"财富+11 关系-1",d:{wealth:11,relation:-1},narr:"你跳了槽，身价涨了，旧人脉却淡了。"}]},
+  {id:"wR_f3",dim:"wealth",rarity:"R",title:"房产增值",stages:["中年","暮年"],desc:"你早年买的那套房，身价翻倍。",opts:[{n:"变现套现",h:"财富+12 关系-1",d:{wealth:12,relation:-1},narr:"你卖了房落袋为安，手头一下子阔了。"},{n:"留着收租",h:"财富+9 快乐+1",d:{wealth:9,happy:1},narr:"你当起包租公，月月进项，日子滋润。"},{n:"置换改善",h:"财富+7 智慧+1",d:{wealth:7,wisdom:1},narr:"你换了更大的屋，住得舒心，也算会打算。"}]},
+  {id:"wR_f4",dim:"wealth",rarity:"R",title:"退休金丰",stages:["暮年"],desc:"你年轻时的保险，老了成了底气。",opts:[{n:"安稳领取",h:"财富+8 快乐+1",d:{wealth:8,happy:1},narr:"你按月领着，晚年不慌。"},{n:"贴补儿孙",h:"财富+5 关系+3",d:{wealth:5,relation:3},narr:"你塞给孙辈红包，看他们笑你就值。"},{n:"理财打理",h:"财富+10 智慧+1",d:{wealth:10,wisdom:1},narr:"你亲自理着财，钱生钱，也有成就感。"}]},
+  {id:"rR_y1",dim:"relation",rarity:"R",title:"高朋满座",stages:["青年","中年","暮年"],desc:"你天生会张罗，身边总聚着人。",opts:[{n:"广结良友",h:"关系+9 财富-2",d:{relation:9,wealth:-2},narr:"你爱张罗饭局，人缘旺了，钱包瘦了。"},{n:"深交几人",h:"关系+6 智慧+1",d:{relation:6,wisdom:1},narr:"你宁可少而精，三五知己，抵过百般热闹。"},{n:"独善其身",h:"关系+2 智慧+2",d:{relation:2,wisdom:2},narr:"你不爱扎堆，倒落得清静自在。"}]},
+  /* —— 补充：超稀有 SR（创业成功后才会出现的公司线） —— */
+  {id:"wSR_f1",dim:"wealth",rarity:"SR",title:"公司走上正轨",stages:["青年","中年"],req:"founded",desc:"你创办的公司终于熬过了生死线。",opts:[{n:"乘势扩张",h:"财富+18 健康-2",d:{wealth:18,health:-2},narr:"你招兵买马，盘子做大，人也更累。"},{n:"稳扎稳打",h:"财富+13 快乐+1",d:{wealth:13,happy:1},narr:"你不贪快，利润细水长流，睡得着觉。"},{n:"分红享乐",h:"财富+10 快乐+4",d:{wealth:10,happy:4},narr:"你给自己发了笔奖金，犒劳这些年。"}]},
+  /* —— 补充：神话 MY（影响巨大、改写人生轨迹） —— */
+  {id:"wMY_y2",dim:"wealth",rarity:"MY",title:"公司上市",stages:["青年","中年"],req:"founded",desc:"你一手创办的公司敲响了上市钟。",opts:[{n:"身家暴涨",h:"财富+45 关系-3 快乐+6",d:{wealth:45,relation:-3,happy:6},narr:"钟声一响，你成了富豪榜上的名字，世人仰慕，可推杯换盏间真朋友少了，那种『一夜财务自由』的眩晕，很久才平复。"},{n:"控股守业",h:"财富+34 智慧+4",d:{wealth:34,wisdom:4},narr:"你没全抛，握着控制权，把公司当成第二生命慢慢养。"},{n:"激流勇退",h:"财富+28 快乐+8",d:{wealth:28,happy:8},narr:"你套现离场，把后半生还给自己，去圆那些被创业耽误的梦。"}]},
+  {id:"wMY_m1",dim:"wealth",rarity:"MY",title:"商业帝国",stages:["中年","暮年"],req:"founded",desc:"你的品牌开遍了大街小巷。",opts:[{n:"开疆拓土",h:"财富+50 健康-4 快乐+4",d:{wealth:50,health:-4,happy:4},narr:"你疯狂铺店，帝国成型，身子却为它熬出了裂纹。"},{n:"精耕细作",h:"财富+38 智慧+3",d:{wealth:38,wisdom:3},narr:"你重质不重量，口碑立住了，钱也滚滚来。"},{n:"回馈社会",h:"财富+34 关系+6",d:{wealth:34,relation:6},narr:"你拿利润做公益，金字招牌越擦越亮，人缘旺得发烫。"}]},
+  {id:"kMY_y2",dim:"happy",rarity:"MY",title:"环球壮游",stages:["青年","中年","暮年"],desc:"你背起行囊，用数年走遍了世界。",opts:[{n:"纵情山水",h:"快乐+28 财富-6 智慧+3",d:{happy:28,wealth:-6,wisdom:3},narr:"你从极光走到沙漠，见过的天地撑大了心胸，钱包空了，灵魂却满得溢出来。"},{n:"慢游深居",h:"快乐+20 智慧+5",d:{happy:20,wisdom:5},narr:"你不赶景点，在一个小镇住上半月，把异乡过成了故乡。"},{n:"结伴同游",h:"快乐+24 关系+5",d:{happy:24,relation:5},narr:"你呼朋唤友上路，一路笑闹，友谊在旅途中淬成了钢。"}]},
+  {id:"hMY_o1",dim:"health",rarity:"MY",title:"返老还童",stages:["暮年"],desc:"你竟逆着岁月，越活越年轻。",opts:[{n:"快意人生",h:"健康+22 快乐+6",d:{health:22,happy:6},narr:"你白发转青，步履生风，把暮年活成了第二春。"},{n:"潜心养性",h:"健康+16 智慧+4",d:{health:16,wisdom:4},narr:"你借这副好身板修心，人通透得像换了魂。"},{n:"顺其自然",h:"健康+14 快乐+2",d:{health:14,happy:2},narr:"你不张扬，这份逆龄的福气平平淡淡护着你。"}]},
+  {id:"rMY_o1",dim:"relation",rarity:"MY",title:"德披四方",stages:["暮年"],desc:"你一辈子的善，到了晚年有了回响。",opts:[{n:"广施仁德",h:"关系+26 财富-2 快乐+4",d:{relation:26,wealth:-2,happy:4},narr:"当年帮过的人一个个回来，门槛被踏破，你成了方圆几里最被惦记的老宝贝。"},{n:"润物无声",h:"关系+18 智慧+3",d:{relation:18,wisdom:3},narr:"你从不图报，善却像种子，悄悄长满了后辈的路。"},{n:"低调行善",h:"关系+14 快乐+3",d:{relation:14,happy:3},narr:"你匿名助人，自己偷着乐，活得敞亮。"}]},
+  {id:"zMY_o1",dim:"wisdom",rarity:"MY",title:"封圣",stages:["暮年"],desc:"你的思想，成了后人反复研读的经典。",opts:[{n:"著书立说",h:"智慧+22 关系+6",d:{wisdom:22,relation:6},narr:"你写下的字句被一代代翻读，你在纸上得了永生，也暖了无数陌生人。"},{n:"开宗立派",h:"智慧+26 关系+2",d:{wisdom:26,relation:2},narr:"你创立的学问自成一脉，门生遍天下，名字刻进了历史。"},{n:"诲人不倦",h:"智慧+18 快乐+5",d:{wisdom:18,happy:5},narr:"你乐呵呵地答疑，在传授里自己也越活越透亮。"}]},
+  /* —— 补充：传奇 LEG（极端改写人生轨迹，如航天员） —— */
+  {id:"zLEG_astro",dim:"wisdom",rarity:"LEG",title:"入选航天员",stages:["青年","中年"],desc:"你从万里挑一里杀出，成为航天员。",opts:[{n:"接受使命",h:"智慧+20 健康+10 快乐+8 关系-4",d:{wisdom:20,health:10,happy:8,relation:-4},narr:"你进入封闭训练，数年与星辰为伴；归来时眼界、体魄、心境都被彻底重塑，只是与尘世烟火生了几分疏离。"},{n:"遗憾落选",h:"智慧+6 快乐-2",d:{wisdom:6,happy:-2},narr:"你止步终选，怅然若失，却把那股劲化成了别处的拼劲。"},{n:"遥望星河",h:"智慧+12 快乐+4",d:{wisdom:12,happy:4},narr:"你没入选却入了迷，业余钻研航天，把浪漫活成了本事。"}]},
+
+  /* —— 事业 / 工作类卡牌（占人生大部分，多为常见 N/R，贯穿童年到暮年） —— */
+  {id:"wN_c4",dim:"wealth",rarity:"N",title:"帮家里摆摊",stages:["童年"],desc:"周末你帮爸妈看小摊。",opts:[{n:"帮忙吆喝",h:"财富+2 关系+1",d:{wealth:2,relation:1},narr:"你扯着嗓子叫卖，第一桶『生意经』就这么懵懂地开了头。"},{n:"嫌累躲开",h:"快乐+1",d:{happy:1},narr:"你溜去一旁玩，摊子是父母的，自在是你的。"},{n:"学着算账",h:"财富+1 智慧+1",d:{wealth:1,wisdom:1},narr:"你帮着数零钱，歪歪扭扭地认了数字。"}]},
+  {id:"wN_t4",dim:"wealth",rarity:"N",title:"课余送奶",stages:["少年"],desc:"你揽下了一栋楼的送奶活。",opts:[{n:"早起送奶",h:"财富+4 健康+1 快乐-1",d:{wealth:4,health:1,happy:-1},narr:"你天不亮就爬起，手冻红也跑得欢，攒下了第一笔辛苦钱。"},{n:"偷懒应付",h:"快乐+2",d:{happy:2},narr:"你糊弄了事，钱没多挣，倒落个轻松。"},{n:"准时送达",h:"财富+3 智慧+1",d:{wealth:3,wisdom:1},narr:"你风雨无阻，街坊都夸你靠谱，也练出了信用。"}]},
+  {id:"wR_y3",dim:"wealth",rarity:"R",title:"投简历求职",stages:["青年"],desc:"你四处投简历，等一个 offer。",opts:[{n:"海投上岸",h:"财富+8 关系+1",d:{wealth:8,relation:1},narr:"你广撒网终有回音，签下合同那刻，漂泊有了着落。"},{n:"精修简历",h:"财富+5 智慧+2",d:{wealth:5,wisdom:2},narr:"你反复打磨履历，实力之外多了份包装的本事。"},{n:"眼高手低",h:"财富-1 智慧+1",d:{wealth:-1,wisdom:1},narr:"你挑三拣四屡屡碰壁，倒也看清了自己几斤几两。"}]},
+  {id:"wN_y4",dim:"wealth",rarity:"N",title:"职场新人",stages:["青年"],desc:"你刚入职，处处学着来。",opts:[{n:"勤恳做事",h:"财富+5 智慧+1 关系+1",d:{wealth:5,wisdom:1,relation:1},narr:"你把手头活干得漂亮，前辈乐意带，工资也稳稳涨。"},{n:"摸鱼度日",h:"快乐+2 财富-1",d:{happy:2,wealth:-1},narr:"你上班混点，轻松是轻松，进步却慢了半拍。"},{n:"主动揽活",h:"财富+3 智慧+2",d:{wealth:3,wisdom:2},narr:"你抢着学新东西，本事见长，也进了领导法眼。"}]},
+  {id:"wN_y5",dim:"wealth",rarity:"N",title:"加班赶项目",stages:["青年","中年"],desc:"项目节点压顶，你连轴转。",opts:[{n:"通宵赶工",h:"财富+6 健康-4 快乐-1",d:{wealth:6,health:-4,happy:-1},narr:"你拿命换进度，奖金到手，黑眼圈也成了勋章。"},{n:"准点收工",h:"财富+2 健康+1",d:{wealth:2,health:1},narr:"你守住界限，活儿照干，身子没垮。"},{n:"巧用工具",h:"财富+4 智慧+2",d:{wealth:4,wisdom:2},narr:"你写了脚本提效，早做完早收工，还涨了本事。"}]},
+  {id:"wR_y4",dim:"wealth",rarity:"R",title:"第一次涨薪",stages:["青年","中年"],desc:"你鼓起勇气谈了薪酬。",opts:[{n:"据理力争",h:"财富+9 关系-1",d:{wealth:9,relation:-1},narr:"你拿出业绩说话，工资涨了，老板多少有点不爽。"},{n:"静待时机",h:"财富+6 快乐+1",d:{wealth:6,happy:1},narr:"你耐住性子，年终自然水涨船高，不争也得了。"},{n:"跳槽涨薪",h:"财富+11 关系-2",d:{wealth:11,relation:-2},narr:"你另谋高就，身价翻倍，旧人脉却淡了。"}]},
+  {id:"wN_y6",dim:"wealth",rarity:"N",title:"副业接单",stages:["青年","中年"],desc:"你利用专长接私活。",opts:[{n:"接私活",h:"财富+7 健康-1 智慧+1",d:{wealth:7,health:-1,wisdom:1},narr:"你接单做到手软，钱包鼓了，睡眠少了，门道也通了。"},{n:"量力接单",h:"财富+4 智慧+1",d:{wealth:4,wisdom:1},narr:"你接得克制，活儿精了，人也不累。"},{n:"浅尝辄止",h:"财富+2 快乐+1",d:{wealth:2,happy:1},narr:"你试了把水，小赚一笔，图个乐。"}]},
+  {id:"wR_y5",dim:"wealth",rarity:"R",title:"考证进修",stages:["青年","中年"],desc:"你报了职业资格考试。",opts:[{n:"苦读拿证",h:"智慧+9 财富-2 健康-1",d:{wisdom:9,wealth:-2,health:-1},narr:"你悬梁刺股考下证，身价涨了，人也瘦了一圈。"},{n:"报班速成",h:"智慧+5 财富-3",d:{wisdom:5,wealth:-3},narr:"你砸钱速成，证是到手了，底子却虚。"},{n:"边做边学",h:"智慧+6 财富+1",d:{wisdom:6,wealth:1},narr:"你干中学，证和钱一起涨，最是划算。"}]},
+  {id:"wN_m4",dim:"wealth",rarity:"N",title:"中层管理",stages:["中年"],desc:"你坐上了小主管的位置。",opts:[{n:"带团队冲",h:"财富+8 关系+2 健康-2",d:{wealth:8,relation:2,health:-2},narr:"你领着弟兄们打硬仗，奖金厚了，身体却紧了。"},{n:"稳守岗位",h:"财富+5 快乐+1",d:{wealth:5,happy:1},narr:"你不贪功，稳稳当当，日子也舒坦。"},{n:"培养下属",h:"财富+4 关系+3 智慧+1",d:{wealth:4,relation:3,wisdom:1},narr:"你乐意带人，团队服你，口碑也立了起来。"}]},
+  {id:"wR_m2",dim:"wealth",rarity:"R",title:"中年裁员危机",stages:["中年"],desc:"公司架构调整，你被列入名单。",opts:[{n:"转型突围",h:"财富-4 智慧+6 健康-2",d:{wealth:-4,wisdom:6,health:-2},narr:"你咬牙转行，短期收入砍了，长本事却涨了。"},{n:"被优化",h:"财富-8 健康-3 快乐-2",d:{wealth:-8,health:-3,happy:-2},narr:"你拿了补偿金走人，口袋空了，心里也空了一块。"},{n:"内部转岗",h:"财富-1 关系+1 快乐+1",d:{wealth:-1,relation:1,happy:1},narr:"你挪了个坑，收入略降，却避开了风暴眼。"}]},
+  {id:"wN_m5",dim:"wealth",rarity:"N",title:"职业病缠身",stages:["中年"],desc:"长年伏案，老毛病找上门。",opts:[{n:"及时就医",h:"健康+4 财富-2",d:{health:4,wealth:-2},narr:"你舍得花钱看病，早治早好，没拖成大病。"},{n:"硬扛",h:"健康-5 财富+2",d:{health:-5,wealth:2},narr:"你不当回事，省了钱，落下病根。"},{n:"调岗养护",h:"健康+2 财富-1 智慧+1",d:{health:2,wealth:-1,wisdom:1},narr:"你申请轻活，身子缓过来了，也多了心思琢磨。"}]},
+  {id:"wN_m6",dim:"wealth",rarity:"N",title:"退休返聘",stages:["暮年"],desc:"单位请你回去发挥余热。",opts:[{n:"发挥余热",h:"财富+6 智慧+2 关系+1",d:{wealth:6,wisdom:2,relation:1},narr:"你回去带新人，经验换了钱，也换了尊重。"},{n:"安享清闲",h:"财富+2 快乐+3",d:{wealth:2,happy:3},narr:"你婉拒返聘，含饴弄孙，落个清静自在。"},{n:"带徒传艺",h:"财富+4 关系+3 智慧+2",d:{wealth:4,relation:3,wisdom:2},narr:"你收了徒弟，手艺有了传人，晚年也热闹。"}]},
+  {id:"rN_y4",dim:"relation",rarity:"N",title:"同事关系",stages:["青年","中年"],desc:"办公室里的人际关系微妙。",opts:[{n:"与人为善",h:"关系+5 快乐+1",d:{relation:5,happy:1},narr:"你待人真诚，同事愿意帮，路子也宽了。"},{n:"保持距离",h:"关系+1 智慧+1",d:{relation:1,wisdom:1},narr:"你公事公办，少了牵绊，也少了麻烦。"},{n:"卷入是非",h:"关系-3 快乐-1",d:{relation:-3,happy:-1},narr:"你掺和八卦，站了队，也结了怨。"}]},
+  {id:"rN_m4",dim:"relation",rarity:"N",title:"客户应酬",stages:["中年"],desc:"你周旋在各路客户之间。",opts:[{n:"周旋得当",h:"关系+6 财富+2 健康-1",d:{relation:6,wealth:2,health:-1},narr:"你分寸拿捏得好，单子成了，身子稍累。"},{n:"推杯换盏",h:"关系+5 健康-3",d:{relation:5,health:-3},narr:"你杯杯见底换订单，肝在替你买单。"},{n:"公事公办",h:"关系+2 财富+1",d:{relation:2,wealth:1},narr:"你专业立身，不靠酒桌，也赢得尊重。"}]},
+  {id:"kR_y3",dim:"happy",rarity:"R",title:"团建活动",stages:["青年","中年"],desc:"公司组织了一场团建。",opts:[{n:"积极破冰",h:"快乐+7 关系+3",d:{happy:7,relation:3},narr:"你带头热闹，气氛一下活了，人缘也涨了。"},{n:"被迫参加",h:"快乐-1 关系+1",d:{happy:-1,relation:1},narr:"你硬着头皮去，没乐着，倒也没得罪人。"},{n:"组织策划",h:"快乐+5 关系+4 智慧+1",d:{happy:5,relation:4,wisdom:1},narr:"你张罗全局，累并快乐着，存在感拉满。"}]},
+  {id:"kN_y4",dim:"happy",rarity:"N",title:"工作倦怠",stages:["青年","中年"],desc:"日复一日的枯燥让你提不起劲。",opts:[{n:"请假充电",h:"快乐+6 健康+1 财富-1",d:{happy:6,health:1,wealth:-1},narr:"你休了年假放空，回血之后又是好汉。"},{n:"硬撑",h:"快乐-4 健康-3",d:{happy:-4,health:-3},narr:"你死撑着，笑容没了，身子也亮了红灯。"},{n:"调整节奏",h:"快乐+3 健康+1",d:{happy:3,health:1},narr:"你给自己松绑，规律了些，眉间舒展了。"}]},
+  {id:"wR_o2",dim:"wealth",rarity:"R",title:"帮衬子女事业",stages:["暮年"],desc:"儿女创业，你要不要搭把手？",opts:[{n:"出资支持",h:"财富-6 关系+6 快乐+2",d:{wealth:-6,relation:6,happy:2},narr:"你掏了养老本助 ta 起步，看 ta 站稳，比赚钱还乐。"},{n:"只出主意",h:"财富+1 关系+3 智慧+1",d:{wealth:1,relation:3,wisdom:1},narr:"你不动钱只动脑，亲情没伤，经验传了。"},{n:"不参与",h:"关系-1 快乐+1",d:{relation:-1,happy:1},narr:"你由 ta 去闯，落得清静，只是略显疏离。"}]},
+  {id:"wN_o4",dim:"wealth",rarity:"N",title:"发挥专长",stages:["暮年"],desc:"你的一技之长还有人惦记。",opts:[{n:"顾问咨询",h:"财富+5 智慧+2",d:{wealth:5,wisdom:2},narr:"你当起顾问，老经验换了新进项。"},{n:"义务帮忙",h:"关系+3 智慧+1",d:{relation:3,wisdom:1},narr:"你免费搭手，名声更好了，也添了份价值感。"},{n:"含饴弄孙",h:"快乐+3 关系+2",d:{happy:3,relation:2},narr:"你把本事留给孙子，天伦之乐最实在。"}]},
+
+  /* —— 增补：10 张改写人生轨迹的大事件（自创编，整局仅触发一次） —— */
+  {id:"zMY_immigrate",dim:"wisdom",rarity:"MY",title:"远赴海外",stages:["青年","中年"],unique:{},desc:"一个机遇让你决定举家迁往异国。",opts:[{n:"举家移民",h:"智慧+12 财富+10 关系-8 快乐-2",d:{wisdom:12,wealth:10,relation:-8,happy:-2},mem:{type:"immigrated",key:"immigrated",name:"海外"},narr:"你拖着行李跨过重洋，新世界的门打开了，旧日的人情却隔着一整片海。"},{n:"独自闯荡",h:"智慧+15 财富+6 关系-10 快乐+2",d:{wisdom:15,wealth:6,relation:-10,happy:2},narr:"你单枪匹马杀出去，本事与眼界疯长，只是孤独成了常态。"},{n:"留守故土",h:"快乐+3 关系+4",d:{happy:3,relation:4},narr:"你放弃了远行，守着熟悉的人与城，心安也温暖。"}]},
+  {id:"wMY_invent",dim:"wealth",rarity:"MY",title:"重大发明",stages:["青年","中年"],unique:{},desc:"你的一项发明，可能改写一个行业。",opts:[{n:"专利变现",h:"财富+40 智慧+10 快乐+6",d:{wealth:40,wisdom:10,happy:6},narr:"你拿下专利授权，技术变成真金白银，也成了圈内被人记住的名字。"},{n:"开源共享",h:"财富+6 智慧+16 关系+8 快乐+4",d:{wealth:6,wisdom:16,relation:8,happy:4},narr:"你把成果免费公开，造福无数人，声望与满足感远超金钱。"},{n:"搁置不用",h:"智慧+4",d:{wisdom:4},narr:"你没精力落地，发明锁在抽屉里，只添了点谈资。"}]},
+  {id:"kLEG_idol",dim:"happy",rarity:"LEG",title:"全民偶像",stages:["青年","中年","暮年"],unique:{},desc:"一夜之间，你成了万众追捧的顶流。",opts:[{n:"享受追捧",h:"快乐+30 关系+10 财富+8 健康-4",d:{happy:30,relation:10,wealth:8,health:-4},narr:"你站在聚光灯最中央，全世界都在爱你，只是那光太烫，人也累了。"},{n:"急流勇退",h:"快乐+16 智慧+6",d:{happy:16,wisdom:6},narr:"你在最红时抽身，把热闹还给别人，留一份清醒给自己。"},{n:"塌房翻车",h:"快乐-10 关系-12 财富-6",d:{happy:-10,relation:-12,wealth:-6},narr:"一场风波把你从神坛掀下，曾经的欢呼变成嘲讽，你跌得鼻青脸肿。"}]},
+  {id:"rMY_divorce",dim:"relation",rarity:"MY",title:"劳燕分飞",stages:["中年"],unique:{},desc:"你和那个曾发誓共度一生的人，走到了尽头。",opts:[{n:"体面分开",h:"关系-8 财富-6 快乐+4 智慧+2",d:{relation:-8,wealth:-6,happy:4,wisdom:2},mem:{type:"divorce",key:"divorce",name:"前任"},narr:"你们好聚好散，财产分了，牵绊断了，倒也长出几分从容。"},{n:"撕破脸",h:"关系-14 财富-8 快乐-6",d:{relation:-14,wealth:-8,happy:-6},narr:"你们闹得满城风雨，钱和情都撕碎了，好久才缓过来。"},{n:"挽回复合",h:"关系+4 财富-4 快乐-2",d:{relation:4,wealth:-4,happy:-2},narr:"你低头挽回，家是保住了，裂痕却还在暗处。"}]},
+  {id:"hLEG_athlete",dim:"health",rarity:"LEG",title:"奥运夺金",stages:["青年","中年"],unique:{},desc:"你站上了世界最高领奖台。",opts:[{n:"绝杀夺冠",h:"健康+14 快乐+18 关系+8 财富+10",d:{health:14,happy:18,relation:8,wealth:10},narr:"你冲过终点，国歌响起，那一刻你属于全世界，也赢下了自己的人生。"},{n:"带伤完赛",h:"健康+6 快乐+12 关系+4",d:{health:6,happy:12,relation:4},narr:"你忍着伤拼完，虽未夺金，那份倔强却让所有人记住了你。"},{n:"止步预赛",h:"健康-4 快乐-6 智慧+2",d:{health:-4,happy:-6,wisdom:2},narr:"你遗憾出局，夜里偷偷哭过，却把不甘化成了下一程的劲。"}]},
+  {id:"wMY_bankrupt",dim:"wealth",rarity:"MY",title:"破产风暴",stages:["中年"],unique:{},desc:"一次误判，你辛苦攒下的财富瞬间蒸发。",opts:[{n:"绝地重生",h:"财富-25 智慧+10 快乐-4",d:{wealth:-25,wisdom:10,happy:-4},narr:"你从谷底爬起，虽一无所有，却炼出了别人没有的眼界与韧性。"},{n:"一蹶不振",h:"财富-30 健康-8 快乐-10 关系-4",d:{wealth:-30,health:-8,happy:-10,relation:-4},narr:"你被击垮了，从此一蹶不振，往后的日子都在还债与懊悔里。"},{n:"断臂求生",h:"财富-15 智慧+4 快乐-1",d:{wealth:-15,wisdom:4,happy:-1},narr:"你果断割肉止损，瘦身之后反而轻装上路。"}]},
+  {id:"zLEG_sage",dim:"wisdom",rarity:"LEG",title:"思想巨匠",stages:["中年","暮年"],unique:{},desc:"你的洞见，渐渐汇成一套影响世人的学说。",opts:[{n:"著书立说",h:"智慧+26 关系+8 快乐+6",d:{wisdom:26,relation:8,happy:6},narr:"你写下的字句被一代代翻读，你在纸上得了永生，也暖了无数陌生人。"},{n:"默默践行",h:"智慧+18 快乐+8",d:{wisdom:18,happy:8},narr:"你不立说只躬行，活成了旁人眼里的标杆，自在也通透。"},{n:"不被理解",h:"智慧+14 关系-6 快乐-2",d:{wisdom:14,relation:-6,happy:-2},narr:"你的超前惹来非议，孤独里你守住了自己的方圆。"}]},
+  {id:"kMY_business",dim:"happy",rarity:"MY",title:"流量顶流",stages:["青年","中年"],unique:{},desc:"你成了头部创作者，镜头前尽是目光。",opts:[{n:"流量变现",h:"快乐+16 财富+30 关系+4 健康-3",d:{happy:16,wealth:30,relation:4,health:-3},narr:"你接下天价合作，账户与热度齐飞，只是镜头外的你越来越累。"},{n:"内容为王",h:"快乐+12 智慧+6 财富+14",d:{happy:12,wisdom:6,wealth:14},narr:"你死磕质量，粉丝黏住你，钱也细水长流地来。"},{n:"昙花一现",h:"快乐-4 财富-6 关系-3",d:{happy:-4,wealth:-6,relation:-3},narr:"一阵风过去，你被遗忘，热度退潮后只剩寥落。"}]},
+  {id:"rLEG_philanthropy",dim:"relation",rarity:"LEG",title:"散尽家财",stages:["中年","暮年"],unique:{},desc:"你决定把大半身家，投进一件有意义的事。",opts:[{n:"建基金会",h:"关系+22 财富-20 快乐+8 智慧+4",d:{relation:22,wealth:-20,happy:8,wisdom:4},narr:"你掏空积蓄做公益，金字招牌立起，人心聚拢，自己却甘守清贫。"},{n:"匿名行善",h:"关系+14 财富-10 快乐+4",d:{relation:14,wealth:-10,happy:4},narr:"你隐去姓名助人，旁人不知，你却偷着乐了许多年。"},{n:"量力而行",h:"关系+8 财富-4 快乐+2",d:{relation:8,wealth:-4,happy:2},narr:"你捐得克制，善意流动，日子也不至于紧巴巴。"}]},
+  {id:"wMY_acquire",dim:"wealth",rarity:"MY",title:"被巨头收购",stages:["中年"],req:"founded",unique:{},desc:"你创办的公司，引来行业巨头抛来的橄榄枝。",opts:[{n:"高价套现",h:"财富+48 快乐+10 关系-3",d:{wealth:48,happy:10,relation:-3},narr:"你签下收购协议，财富瞬间封顶，只是亲手养大的『孩子』不再是自己的。"},{n:"换股合并",h:"财富+34 智慧+6",d:{wealth:34,wisdom:6},narr:"你选择合并而非卖出，保留了影响力，也守住了理想。"},{n:"拒绝收购",h:"财富+10 智慧+4 快乐+4",d:{wealth:10,wisdom:4,happy:4},narr:"你婉拒巨头，继续独立奔跑，自由的滋味比钱更贵。"}]},
+
+  /* —— 补充：各维度 × 各稀有度 各加一张，丰富卡池（N·R·SR·EP·MY·LEG 全覆盖） —— */
+  {id:"hN_a1",dim:"health",rarity:"N",title:"早睡早起",stages:["童年","少年","青年","中年"],desc:"你学着安排自己的作息。",opts:[{n:"养成习惯",h:"健康+3 智慧+1",d:{health:3,wisdom:1},narr:"你日落后就寝、天亮即起，身子骨被养得结实，脑子也清爽。"},{n:"偶尔赖床",h:"快乐+1",d:{happy:1},narr:"你贪恋被窝，多睡的那半小时，是童年最奢侈的自由。"},{n:"熬夜不改",h:"健康-2 快乐+1",d:{health:-2,happy:1},narr:"你熬着夜看闲书，当下快活，第二天的黑眼圈却诚实。"}]},
+  {id:"hR_a1",dim:"health",rarity:"R",title:"健身塑形",stages:["青年","中年"],desc:"你决定把身体练出样子。",opts:[{n:"坚持锻炼",h:"健康+7 快乐+1",d:{health:7,happy:1},narr:"你把健身当成日常，线条一点点出来，镜中的自己越来越精神。"},{n:"三天打鱼",h:"健康+2 快乐+1",d:{health:2,happy:1},narr:"你办了卡却常缺席，好歹也动了动，比不动强。"},{n:"请私教带",h:"健康+5 财富-2",d:{health:5,wealth:-2},narr:"你花钱请人盯动作，少走弯路，钱包略瘪。"}]},
+  {id:"hSR_a1",dim:"health",rarity:"SR",title:"拜师习武",stages:["少年","青年","中年"],desc:"你跟着师父摸爬滚打。",opts:[{n:"勤学苦练",h:"健康+11 关系+2",d:{health:11,relation:2},narr:"你冬练三九夏练三伏，身手矫健，也敬出了师徒情。"},{n:"自练套路",h:"健康+8 智慧+1",d:{health:8,wisdom:1},narr:"你照着书比划，虽无明师，也练出了一身筋骨。"},{n:"比武切磋",h:"健康+9 关系+3 快乐+1",d:{health:9,relation:3,happy:1},narr:"你和同门过招，武艺见长，还结下了一帮肝胆相照的兄弟。"}]},
+  {id:"hEP_a1",dim:"health",rarity:"EP",title:"罕见体质",stages:["童年","少年","青年"],desc:"你生来有些与众不同的禀赋。",opts:[{n:"天赋尽显",h:"健康+15 快乐+2",d:{health:15,happy:2},narr:"你跑得比谁都快、病比谁都少，旁人羡慕你这副底子。"},{n:"苦练成形",h:"健康+11 智慧+2",d:{health:11,wisdom:2},narr:"你把天赋磨成了真本事，身子与脑子一起长。"},{n:"浅尝即止",h:"健康+6",d:{health:6},narr:"你只图个好玩，底子好了些，没往深里练。"}]},
+  {id:"hMY_a1",dim:"health",rarity:"MY",title:"长寿基因",stages:["暮年"],desc:"你家族的人，似乎都特别经活。",opts:[{n:"颐养天年",h:"健康+20 快乐+4",d:{health:20,happy:4},narr:"你慢条斯理地过，头发白得晚，腿脚也比同龄人利索。"},{n:"老当益壮",h:"健康+16 智慧+2",d:{health:16,wisdom:2},narr:"你不服老，种花遛鸟样样来，把暮年过成了第二春。"},{n:"含饴弄孙",h:"健康+14 关系+2",d:{health:14,relation:2},narr:"你围着孙辈转，笑声里身子也暖了，福气养人。"}]},
+  {id:"hLEG_a1",dim:"health",rarity:"LEG",title:"绝境重生",stages:["中年","暮年"],desc:"一场大病，把你推到了悬崖边。",opts:[{n:"战胜重疾",h:"健康+16 智慧+5 快乐+3",d:{health:16,wisdom:5,happy:3},narr:"你咬着牙熬过放化疗，捡回一条命，也把生死看透了，往后活得愈发通透敞亮。"},{n:"坦然面对",h:"健康+8 智慧+6",d:{health:8,wisdom:6},narr:"你平静接受命运，把余生活成修行，心境反倒澄明了。"},{n:"乐观抗癌",h:"健康+12 快乐+6",d:{health:12,happy:6},narr:"你笑着跟病魔较劲，开心果般逗乐病友，自己也被这股劲托住了。"}]},
+  {id:"wN_a1",dim:"wealth",rarity:"N",title:"记账理财",stages:["青年","中年"],desc:"你开始琢磨钱该怎么花。",opts:[{n:"精打细算",h:"财富+5 智慧+1",d:{wealth:5,wisdom:1},narr:"你记下每一笔开销，钱花在刀刃上，年底一算竟有了结余。"},{n:"随手记记",h:"财富+2",d:{wealth:2},narr:"你懒懒地记着，糊涂账里也攒下一点。"},{n:"月光度日",h:"财富-1 快乐+1",d:{wealth:-1,happy:1},narr:"你月月花光，当下痛快，账户却总空着。"}]},
+  {id:"wR_a1",dim:"wealth",rarity:"R",title:"理财投资",stages:["青年","中年"],desc:"你试着让钱生钱。",opts:[{n:"稳健定投",h:"财富+9 智慧+2",d:{wealth:9,wisdom:2},narr:"你每月定额买指数，不慌不躁，几年下来小有斩获。"},{n:"追涨杀跌",h:"财富-3 智慧+1",d:{wealth:-3,wisdom:1},narr:"你跟着情绪买卖，交了学费，也长了记性。"},{n:"房产投资",h:"财富+11 关系-1",d:{wealth:11,relation:-1},narr:"你咬牙按揭了套房，资产涨了，跟亲戚借钱时略显尴尬。"}]},
+  {id:"wSR_a1",dim:"wealth",rarity:"SR",title:"风投青睐",stages:["青年","中年"],desc:"你的项目，引来了资本目光。",opts:[{n:"拿下融资",h:"财富+18 智慧+3",d:{wealth:18,wisdom:3},narr:"你签下投资协议，弹药充足，招兵买马把盘子做大。"},{n:"拒绝高估",h:"财富+8 智慧+4",d:{wealth:8,wisdom:4},narr:"你没被估值冲昏头，守着节奏，反而走得更稳。"},{n:"对赌冲刺",h:"财富+14 关系-2",d:{wealth:14,relation:-2},narr:"你签下对赌，玩命冲业绩，赢了盆满钵满，也绷紧了神经。"}]},
+  {id:"wEP_a1",dim:"wealth",rarity:"EP",title:"投资神话",stages:["青年","中年"],desc:"你押中了一波时代红利。",opts:[{n:"押中风口",h:"财富+26 智慧+4",d:{wealth:26,wisdom:4},narr:"你早早在赛道布了局，风口一来，身价翻着跟头涨。"},{n:"长期持有",h:"财富+20 智慧+3",d:{wealth:20,wisdom:3},narr:"你拿得住，不被波动洗出去，时间给了你丰厚的利息。"},{n:"及时止盈",h:"财富+18 快乐+2",d:{wealth:18,happy:2},narr:"你在高点落袋，落袋为安的那晚睡得格外香。"}]},
+  {id:"wMY_a1",dim:"wealth",rarity:"MY",title:"天降遗产",stages:["暮年"],desc:"一位远亲，把家业留给了你。",opts:[{n:"继承家业",h:"财富+40 关系-2",d:{wealth:40,relation:-2},narr:"你接手了那笔意外之财，日子陡然宽绰，只是与旁支亲戚多了几分凉薄。"},{n:"捐出部分",h:"财富+30 关系+6",d:{wealth:30,relation:6},narr:"你拿出一大部分做善事，钱财流动间，人缘反而旺了。"},{n:"谨慎打理",h:"财富+34 智慧+3",d:{wealth:34,wisdom:3},narr:"你请人稳妥理财，钱生着钱，也长了见识。"}]},
+  {id:"wLEG_a1",dim:"wealth",rarity:"LEG",title:"富可敌国",stages:["中年","暮年"],desc:"你的商业版图，大到了难以想象。",opts:[{n:"垄断帝国",h:"财富+55 关系-5 智慧+4",d:{wealth:55,relation:-5,wisdom:4},narr:"你建起横跨多国的商业帝国，富可敌国，世人仰望，可能真正走近你的人，少得可怜。"},{n:"财团掌门",h:"财富+48 关系+3",d:{wealth:48,relation:3},narr:"你执掌庞大财团，一呼百应，把生意做成了门面与体面。"},{n:"隐形首富",h:"财富+44 快乐+6",d:{wealth:44,happy:6},narr:"你藏着名姓低调发财，账上惊人，日子却过得比谁都松弛。"}]},
+  {id:"rN_a1",dim:"relation",rarity:"N",title:"邻里相处",stages:["童年","少年","青年","中年"],desc:"你和左邻右舍打着交道。",opts:[{n:"和睦邻里",h:"关系+3 快乐+1",d:{relation:3,happy:1},narr:"你帮张家收衣、给李家看门，整条巷子都念你的好。"},{n:"互不相扰",h:"关系+1",d:{relation:1},narr:"你关起门来过自己的，倒也清净太平。"},{n:"闹起矛盾",h:"关系-2 快乐-1",d:{relation:-2,happy:-1},narr:"你为一点琐事红了脸，疙疙瘩瘩好一阵才缓过。"}]},
+  {id:"rR_a1",dim:"relation",rarity:"R",title:"良师益友",stages:["青年","中年"],desc:"生命里，来了几个重要的人。",opts:[{n:"拜得恩师",h:"关系+6 智慧+2",d:{relation:6,wisdom:2},narr:"你遇见肯提携你的长辈，受用半生，也记了半生。"},{n:"挚友同行",h:"关系+7 快乐+1",d:{relation:7,happy:1},narr:"你交到能托付后背的朋友，闯荡路上不再孤单。"},{n:"亦师亦友",h:"关系+5 智慧+2",d:{relation:5,wisdom:2},narr:"你与那人亦师亦友，切磋间彼此都长了本事。"}]},
+  {id:"rSR_a1",dim:"relation",rarity:"SR",title:"患难之交",stages:["中年"],desc:"低谷时，谁还站在你身边？",opts:[{n:"雪中送炭",h:"关系+12 智慧+2",d:{relation:12,wisdom:2},narr:"你落难时有人二话不说拉你一把，这份情你记一辈子。"},{n:"共渡难关",h:"关系+10 快乐+2",d:{relation:10,happy:2},narr:"你和伙伴咬牙熬过最坏的日子，情谊在风雨里淬成了钢。"},{n:"仗义疏财",h:"关系+8 财富-3",d:{relation:8,wealth:-3},narr:"你为朋友慷慨解囊，钱少了，人心却近了。"}]},
+  {id:"rEP_a1",dim:"relation",rarity:"EP",title:"天下桃李",stages:["中年","暮年"],desc:"你教过的人，散落成了森林。",opts:[{n:"广育英才",h:"关系+18 智慧+4",d:{relation:18,wisdom:4},narr:"你带出一批批学生，他们成材时，你比谁都骄傲。"},{n:"门生遍野",h:"关系+15 快乐+3",d:{relation:15,happy:3},narr:"你走到哪儿都有人恭敬喊一声老师，晚年热闹又风光。"},{n:"薪火相传",h:"关系+14 智慧+5",d:{relation:14,wisdom:5},narr:"你把一身本事交到年轻人手里，自己也在一遍遍讲述中更通透。"}]},
+  {id:"rMY_a1",dim:"relation",rarity:"MY",title:"家族兴旺",stages:["中年","暮年"],desc:"你这一支，人丁与口碑都旺。",opts:[{n:"人丁兴旺",h:"关系+24 快乐+4",d:{relation:24,happy:4},narr:"儿孙绕膝、亲戚走动，逢年过节的屋里热闹得让人踏实。"},{n:"家风传世",h:"关系+20 智慧+5",d:{relation:20,wisdom:5},narr:"你把正直与勤勉写进家训，后代带着它走得稳当又体面。"},{n:"四世同堂",h:"关系+22 快乐+6",d:{relation:22,happy:6},narr:"你活成了家族的定海神针，一大家子的笑都奔你而来。"}]},
+  {id:"rLEG_a1",dim:"relation",rarity:"LEG",title:"世代望族",stages:["暮年"],desc:"你一手立起的家声，传了好几代。",opts:[{n:"开宗立族",h:"关系+26 智慧+6",d:{relation:26,wisdom:6},narr:"你定下族规、修起祠堂，一个绵延的家族从你手里发端。"},{n:"泽被宗亲",h:"关系+22 财富-3 快乐+4",d:{relation:22,wealth:-3,happy:4},narr:"你掏钱周济同族，人人感念，自己甘守清俭也欢喜。"},{n:"家训流芳",h:"关系+20 智慧+8",d:{relation:20,wisdom:8},narr:"你写下的为人之道被代代诵读，名字成了后人的路标。"}]},
+  {id:"kN_a1",dim:"happy",rarity:"N",title:"美食慰藉",stages:["童年","少年","青年","中年","暮年"],desc:"一口吃食，能哄好许多坏心情。",opts:[{n:"大快朵颐",h:"快乐+3 健康-1",d:{happy:3,health:-1},narr:"你敞开吃了一顿，满足得眯起眼，腰带却紧了一扣。"},{n:"钻研厨艺",h:"快乐+2 智慧+1",d:{happy:2,wisdom:1},narr:"你琢磨着把饭菜做香，喂饱了人，也喂饱了兴致。"},{n:"节制享用",h:"快乐+1 健康+1",d:{happy:1,health:1},narr:"你浅尝辄止，解了馋又没亏着身子，刚刚好。"}]},
+  {id:"kR_a1",dim:"happy",rarity:"R",title:"培养爱好",stages:["青年","中年","暮年"],desc:"你给自己找了点正经乐子。",opts:[{n:"沉浸其中",h:"快乐+7 智慧+1",d:{happy:7,wisdom:1},narr:"你一头扎进爱好里，那点时光是你最舍不得的私享。"},{n:"广交朋友",h:"快乐+6 关系+2",d:{happy:6,relation:2},narr:"你因爱好结识同好，圈子大了，笑声响了。"},{n:"三分钟热度",h:"快乐+2",d:{happy:2},narr:"你新鲜两天就搁下，图个乐呵，倒也不纠结。"}]},
+  {id:"kSR_a1",dim:"happy",rarity:"SR",title:"艺术熏陶",stages:["少年","青年","中年","暮年"],desc:"美的事物，悄悄浸透了你的日子。",opts:[{n:"习琴棋书画",h:"快乐+11 智慧+3",d:{happy:11,wisdom:3},narr:"你临帖作画、抚琴对弈，性子被磨得又静又雅。"},{n:"欣赏经典",h:"快乐+8 智慧+2",d:{happy:8,wisdom:2},narr:"你泡在好电影好音乐里，审美被悄悄抬高了一截。"},{n:"动手创作",h:"快乐+10 智慧+3",d:{happy:10,wisdom:3},narr:"你亲手写写画画，把情绪落进作品，治愈了自己。"}]},
+  {id:"kEP_a1",dim:"happy",rarity:"EP",title:"巅峰体验",stages:["青年","中年"],desc:"你尝到了那种忘乎所以的极乐。",opts:[{n:"极限挑战",h:"快乐+16 健康-2 智慧+2",d:{happy:16,health:-2,wisdom:2},narr:"你玩着最险的项目，肾上腺素飙升，爽到发抖，事后才觉腿软。"},{n:"登顶一览",h:"快乐+14 智慧+3",d:{happy:14,wisdom:3},narr:"你爬上高山之巅，云海在脚下，心胸一下子被撑开了。"},{n:"突破自我",h:"快乐+13 健康+1",d:{happy:13,health:1},narr:"你做到了从前不敢想的事，那种自豪，很久都散不去。"}]},
+  {id:"kMY_a1",dim:"happy",rarity:"MY",title:"梦想成真",stages:["青年","中年","暮年"],desc:"你朝思暮想的那件事，竟真来了。",opts:[{n:"如愿以偿",h:"快乐+24 智慧+4",d:{happy:24,wisdom:4},narr:"你等了半辈子的心愿一朝圆满，连做梦都笑着醒过来。"},{n:"惊喜降临",h:"快乐+20 关系+3",d:{happy:20,relation:3},narr:"生活冷不丁给你一份大礼，你抱着惊喜逢人就讲。"},{n:"念念不忘",h:"快乐+18 智慧+3",d:{happy:18,wisdom:3},narr:"你守着执念不肯放，终于得偿所愿，恍如隔世。"}]},
+  {id:"kLEG_a1",dim:"happy",rarity:"LEG",title:"一生挚爱",stages:["青年","中年","暮年"],desc:"有个人，成了你此生最暖的底色。",opts:[{n:"矢志不渝",h:"快乐+26 关系+8 智慧+3",d:{happy:26,relation:8,wisdom:3},narr:"你与那人从青丝走到白发，风雨里攥紧的手，是这辈子最稳的依靠。"},{n:"相濡以沫",h:"快乐+22 关系+6",d:{happy:22,relation:6},narr:"你们吵过也笑过，柴米油盐里熬出了旁人羡慕的默契。"},{n:"爱意绵长",h:"快乐+24 关系+5",d:{happy:24,relation:5},narr:"你被爱稳稳托着，人到暮年回想，仍觉得运气好得离谱。"}]},
+  {id:"zN_a1",dim:"wisdom",rarity:"N",title:"读万卷书",stages:["少年","青年","中年"],desc:"你相信书本里藏着别人活过的路。",opts:[{n:"博览群书",h:"智慧+3",d:{wisdom:3},narr:"你见缝插针地读，肚子里慢慢有了货。"},{n:"读用结合",h:"智慧+3 财富+1",d:{wisdom:3,wealth:1},narr:"你把书里的法子用到日子上，少走了些弯路。"},{n:"走马观花",h:"智慧+1 快乐+1",d:{wisdom:1,happy:1},narr:"你翻得飞快，图个热闹，多少也沾了点墨香。"}]},
+  {id:"zR_a1",dim:"wisdom",rarity:"R",title:"名师指点",stages:["少年","青年"],desc:"有人愿意把经验掰开揉碎讲给你。",opts:[{n:"得遇良师",h:"智慧+8 关系+1",d:{wisdom:8,relation:1},narr:"你碰上肯倾囊相授的师父，几句话点醒梦中人。"},{n:"勤学善问",h:"智慧+7",d:{wisdom:7},narr:"你遇着不懂就刨根问底，本事是问出来的。"},{n:"自修成才",h:"智慧+6 快乐+1",d:{wisdom:6,happy:1},narr:"你没人带也走得通，自学里磨出了韧劲。"}]},
+  {id:"zSR_a1",dim:"wisdom",rarity:"SR",title:"顿悟开智",stages:["青年","中年","暮年"],desc:"某个瞬间，许多事忽然通了。",opts:[{n:"豁然开朗",h:"智慧+12 快乐+2",d:{wisdom:12,happy:2},narr:"你像被一道光劈开迷雾，卡了许久的结，一下子松了。"},{n:"举一反三",h:"智慧+10 关系+1",d:{wisdom:10,relation:1},narr:"你由一件事摸透一类事，看问题眼毒了许多。"},{n:"静思得法",h:"智慧+9 快乐+2",d:{wisdom:9,happy:2},narr:"你常独自静坐省身，想通了不少旁人想不透的理。"}]},
+  {id:"zEP_a1",dim:"wisdom",rarity:"EP",title:"学贯中西",stages:["青年","中年"],desc:"你把两片天地的智慧，接到了一处。",opts:[{n:"通晓古今",h:"智慧+16 关系+2",d:{wisdom:16,relation:2},narr:"你融汇新旧之学，谈吐间见底蕴，旁人敬你几分。"},{n:"兼收并蓄",h:"智慧+14 快乐+2",d:{wisdom:14,happy:2},narr:"你什么路子都肯吸收，肚里越发开阔从容。"},{n:"自成体系",h:"智慧+15 关系+1",d:{wisdom:15,relation:1},narr:"你把所学织成自己的网，遇事自有章法。"}]},
+  {id:"zMY_a1",dim:"wisdom",rarity:"MY",title:"点石成金",stages:["青年","中年"],desc:"你似乎总能把寻常事，点出不一样的光。",opts:[{n:"化腐朽为奇",h:"智慧+22 财富+4",d:{wisdom:22,wealth:4},narr:"你接手谁都嫌烂的摊子，三两下盘活，旁人直呼神奇。"},{n:"洞察先机",h:"智慧+18 财富+6",d:{wisdom:18,wealth:6},narr:"你比别人早半步看清风向，落子时早已占了先手。"},{n:"点化他人",h:"智慧+16 关系+5",d:{wisdom:16,relation:5},narr:"你三言两语解了别人的困，口碑与人缘一起涨。"}]},
+  {id:"zLEG_a1",dim:"wisdom",rarity:"LEG",title:"文明导师",stages:["中年","暮年"],desc:"你的思想，成了照亮后人的灯。",opts:[{n:"开宗立派",h:"智慧+28 关系+6",d:{wisdom:28,relation:6},narr:"你创立的学说自成一脉，门生遍天下，名字写进了历史。"},{n:"启智世人",h:"智慧+24 关系+8",d:{wisdom:24,relation:8},narr:"你写下的字句被一代代翻读，在无数陌生人心里种了光。"},{n:"泽被后世",h:"智慧+26 关系+10",d:{wisdom:26,relation:10},narr:"你把毕生洞见化作养分，后人乘着凉，你也在传承里得了永生。"}]},
+];
+
+// 卡组库：按维度→稀有度
+const DECK={}; DIMS.forEach(d=>DECK[d]={N:[],R:[],SR:[],EP:[],MY:[],LEG:[]});
+CARDS.forEach(c=>DECK[c.dim][c.rarity].push(c));
+
+/* ============ 开局词条（按稀有度加权抽取，每次呈现 3 个，可无限换批） ============ */
+const ENTRIES=[
+  // —— 普通 N ——
+  {id:"normal",name:"普通人",rarity:"N",desc:"没有任何加成，纯靠卡运和选择。",apply:()=>{}},
+  {id:"poor",name:"寒门子弟",rarity:"N",desc:"财富 −5，但天生坚韧（关系 +2）。",apply:s=>{s.dims.wealth-=5;s.dims.relation+=2;}},
+  {id:"mid",name:"中产之家",rarity:"N",desc:"财富 +5，童年安稳快乐 +2。",apply:s=>{s.dims.wealth+=5;s.dims.happy+=2;}},
+  {id:"plain",name:"平庸但踏实",rarity:"N",desc:"没有光环，稳扎稳打（智慧 +2）。",apply:s=>{s.dims.wisdom+=2;}},
+  {id:"opt",name:"乐天派",rarity:"N",desc:"天生乐观，快乐 +5。",apply:s=>{s.dims.happy+=5;}},
+  {id:"careful",name:"谨小慎微",rarity:"N",desc:"节俭克制（财富 +2，智慧 +3）。",apply:s=>{s.dims.wealth+=2;s.dims.wisdom+=3;}},
+  {id:"single",name:"单亲家庭",rarity:"N",desc:"关系 −3、快乐 −2，但早当家（财富 +3）。",apply:s=>{s.dims.relation-=3;s.dims.happy-=2;s.dims.wealth+=3;}},
+  {id:"healthy",name:"健壮孩童",rarity:"N",desc:"底子好（健康 +4）。",apply:s=>{s.dims.health+=4;}},
+  {id:"bookish",name:"书虫",rarity:"N",desc:"爱读书（智慧 +3，快乐 −1）。",apply:s=>{s.dims.wisdom+=3;s.dims.happy-=1;}},
+  {id:"thrifty",name:"小富即安",rarity:"N",desc:"知足常乐（财富 +4）。",apply:s=>{s.dims.wealth+=4;}},
+  // —— 稀有 R ——
+  {id:"gifted",name:"天资聪颖",rarity:"R",desc:"智慧 +8，开窍早。",apply:s=>{s.dims.wisdom+=8;}},
+  {id:"athlete",name:"运动健将",rarity:"R",desc:"健康 +8，精力旺盛。",apply:s=>{s.dims.health+=8;s.dims.happy+=2;}},
+  {id:"rebel",name:"叛逆不羁",rarity:"R",desc:"自由不羁（快乐 +6，关系 −3）。",apply:s=>{s.dims.happy+=6;s.dims.relation-=3;}},
+  {id:"family",name:"家学渊源",rarity:"R",desc:"智慧 +8，关系 +2。",apply:s=>{s.dims.wisdom+=8;s.dims.relation+=2;}},
+  {id:"literati",name:"书香门第",rarity:"R",desc:"智慧 +6，快乐 +3。",apply:s=>{s.dims.wisdom+=6;s.dims.happy+=3;}},
+  {id:"transmig",name:"穿越者",rarity:"R",desc:"带着先知（智慧 +10、财富 +5，关系 −2）。",apply:s=>{s.dims.wisdom+=10;s.dims.wealth+=5;s.dims.relation-=2;}},
+  {id:"social",name:"交际花",rarity:"R",desc:"八面玲珑（关系 +8，快乐 +2，财富 −3）。",apply:s=>{s.dims.relation+=8;s.dims.happy+=2;s.dims.wealth-=3;}},
+  // —— 超稀有 SR ——
+  {id:"koi",name:"锦鲤体质",rarity:"SR",desc:"抽卡时高稀有概率显著提升。",apply:()=>{},luck:"koi"},
+  {id:"prodigy",name:"天才少年",rarity:"SR",desc:"智慧 +12，健康 +3。",apply:s=>{s.dims.wisdom+=12;s.dims.health+=3;}},
+  {id:"heiress",name:"隐富千金",rarity:"SR",desc:"财富 +15，但被安排（快乐 −2）。",apply:s=>{s.dims.wealth+=15;s.dims.happy-=2;}},
+  {id:"charmer",name:"天生领袖",rarity:"SR",desc:"关系 +10，智慧 +3。",apply:s=>{s.dims.relation+=10;s.dims.wisdom+=3;}},
+  // —— 史诗 EP ——
+  {id:"reborn",name:"涅槃之人",rarity:"EP",desc:"二次成长，五维各 +4。",apply:s=>{DIMS.forEach(d=>s.dims[d]+=4);}},
+  {id:"visionary",name:"远见者",rarity:"EP",desc:"智慧 +14，财富 +6。",apply:s=>{s.dims.wisdom+=14;s.dims.wealth+=6;}},
+  {id:"ironwill",name:"铁意志",rarity:"EP",desc:"健康 +12，快乐 +4。",apply:s=>{s.dims.health+=12;s.dims.happy+=4;}},
+  // —— 神话 MY ——
+  {id:"demigod",name:"半神之躯",rarity:"MY",desc:"健康 +18，智慧 +8。",apply:s=>{s.dims.health+=18;s.dims.wisdom+=8;}},
+  {id:"favorite",name:"天命宠儿",rarity:"MY",desc:"五维各 +6，且卡运极佳。",apply:s=>{DIMS.forEach(d=>s.dims[d]+=6);},luck:"koi"},
+  // —— 传奇 LEG ——
+  {id:"chosen",name:"天选之人",rarity:"LEG",desc:"每阶段首张卡必出超稀有以上，五维各 +5。",apply:s=>{DIMS.forEach(d=>s.dims[d]+=5);},luck:"chosen"},
+];
+const EWGHT={N:30,R:18,SR:10,EP:5,MY:2,LEG:0.6};
+function pickEntries(){
+  let pool=ENTRIES.slice(), chosen=[], guard=0;
+  while(chosen.length<3 && pool.length && guard++<99){
+    const total=pool.reduce((s,e)=>s+EWGHT[e.rarity],0);
+    let r=Math.random()*total, pickE=null;
+    for(const e of pool){ r-=EWGHT[e.rarity]; if(r<=0){pickE=e;break;} }
+    if(!pickE) pickE=pool[pool.length-1];
+    chosen.push(pickE); pool=pool.filter(x=>x!==pickE);
+  }
+  return chosen;
+}
+let currentEntries=pickEntries();
+let chosenEntryId=currentEntries[0].id;
+
+/* ============ 状态 ============ */
+let state=null, stageIdx=0, drawn=[], choices=[], shownOpts=[], detailIdx=-1, revealed=[], lastFlipped=-1;
+let usedThisLife=new Set(), usedUnique=new Set();
+let curGroup=0;
+
+function newState(){ return {dims:{health:50,wealth:50,relation:50,happy:50,wisdom:50}, age:0, alive:true, bio:"", summaries:[], log:[], memory:[]}; }
+function renderStats(){
+  document.getElementById("stats").innerHTML = DIMS.map(dm=>`
+    <div class="rowline"><span class="lbl">${DIMNAME[dm]}</span>
+      <span class="bar"><i style="width:${clamp(state.dims[dm])}%;background:${COLOR[dm]}"></i></span>
+      <span class="val">${Math.round(state.dims[dm])}</span></div>`).join("");
+  document.getElementById("age").textContent=state.age;
+  document.getElementById("stageName").textContent=STAGES[stageIdx];
+}
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1500);}
+
+/* ============ 抽卡：按阶段筛选 + 本局绝不重复 + 6 档稀有度权重 ============ */
+function drawCard(dim, stageName, forceRare){
+  const e=ENTRIES.find(x=>x.id===chosenEntryId);
+  let w={N:0.50,R:0.22,SR:0.15,EP:0.08,MY:0.04,LEG:0.01};
+  if(e&&e.luck==="koi") w={N:0.35,R:0.25,SR:0.18,EP:0.12,MY:0.07,LEG:0.03};
+  if(e&&e.luck==="unlucky") w={N:0.68,R:0.20,SR:0.08,EP:0.03,MY:0.01,LEG:0.00};
+  let targetRar;
+  if(forceRare){ const r=Math.random(); targetRar = r<0.5?"SR":(r<0.8?"EP":(r<0.95?"MY":"LEG")); }
+  else { const r=Math.random(); let acc=0; targetRar="N"; for(const k of RAR_ORDER){ acc+=w[k]; if(r<acc){targetRar=k;break;} } }
+
+  // 记忆/足迹：把过去抉择留下的「旗标」纳入抽卡资格判定
+  const flags=new Set(state.memory.filter(m=>m.type==='flag').map(m=>m.key));
+  const ok=c=>c.dim===dim && c.stages.includes(stageName) && !usedThisLife.has(c.id)
+            && !(c.unique&&usedUnique.has(c.id)) && (!c.req||flags.has(c.req));
+  let pool=CARDS.filter(c=>ok(c)&&c.rarity===targetRar);
+  if(!pool.length) pool=CARDS.filter(c=>ok(c));                                   // 同维同阶段任意合格卡
+  if(!pool.length) pool=CARDS.filter(c=>c.dim===dim&&c.stages.includes(stageName)&&!usedThisLife.has(c.id)); // 放宽：允许重复人生大事
+  if(!pool.length) pool=CARDS.filter(c=>c.dim===dim&&c.stages.includes(stageName));// 再放宽：允许本局已用过
+  if(!pool.length) pool=CARDS.filter(c=>c.dim===dim);                              // 极端兜底
+  const c=pool[Math.floor(Math.random()*pool.length)];
+  usedThisLife.add(c.id); if(c.unique) usedUnique.add(c.id);
+  return c;
+}
+
+function enterStage(){
+  drawn=[]; choices=[]; shownOpts=[]; detailIdx=-1; revealed=[]; lastFlipped=-1;
+  document.getElementById("drawer").classList.remove("collapsed"); // 每个新阶段都确保卡牌展开，玩家始终能看到抽卡入口
+  const stageName=STAGES[stageIdx];
+  DIMS.forEach((dm,idx)=>{ const c=drawCard(dm, stageName, idx===0); drawn.push(c); choices.push(null); shownOpts.push(makeShown(c, stageName)); });
+  state.drawnR = drawn.map(c=>c.rarity);
+  renderDrawer(true);
+  // 自动展开抽屉，方便先看卡
+}
+function renderDrawer(resetDetail){
+  const stageName=STAGES[stageIdx];
+  document.getElementById("drawnCards").innerHTML = drawn.map((c,i)=>{
+    if(!revealed[i]){
+      return `<div class="mcard back ${choices[i]!=null?'decided':''}" data-i="${i}">
+        <div class="q">?</div>
+        <div class="bt">第 ${i+1} 张</div>
+        ${choices[i]!=null?`<div class="pick">✓</div>`:''}
+      </div>`;
+    }
+    return `<div class="mcard ${i===lastFlipped?'reveal-anim':''} ${choices[i]!=null?'decided':''}" style="background:${RCOLOR[c.rarity]}" data-i="${i}">
+      <div class="rar">${RARITY[c.rarity]}</div>
+      <div class="ti">${c.title}</div>
+      <div class="dm">${DIMNAME[c.dim]}</div>
+      ${choices[i]!=null?`<div class="pick">✓ ${choices[i].n}</div><div class="delta">${fmtH(choices[i].h)}</div>`:''}
+    </div>`;
+  }).join("");
+  document.querySelectorAll("#drawnCards .mcard").forEach(el=>el.onclick=()=>onCardClick(parseInt(el.dataset.i)));
+  const done = choices.filter(c=>c!=null).length;
+  document.getElementById("decideProg").textContent = `（已翻面抉择 ${done}/5）`;
+  const genBtn=document.getElementById("genBtn");
+  if(resetDetail){ document.getElementById("cardDetailBox").innerHTML=""; }
+  genBtn.className="genBtn"; genBtn.onclick=generateStory; // 每个新阶段重置为「生成」回调
+  genBtn.disabled = done<5;
+  genBtn.textContent = done<5 ? `✍️ 翻面并抉择全部 5 张后，撰写本章人生（${done}/5）` : `✍️ 撰写「${stageName}」人生章节 ▶`;
+  lastFlipped=-1; // 仅当次翻开的卡播放一次翻转，避免其余已翻开卡重旋
+}
+function onCardClick(i){
+  if(!revealed[i]){ revealed[i]=true; lastFlipped=i; renderDrawer(false); toggleDetail(i); return; }
+  toggleDetail(i);
+}
+
+function toggleDetail(i){
+  const box=document.getElementById("cardDetailBox");
+  if(detailIdx===i){ // 收起
+    box.innerHTML=""; detailIdx=-1; return;
+  }
+  detailIdx=i; const c=drawn[i]; const opts=shownOpts[i];
+  box.innerHTML=`
+    <div class="cardDetail">
+      <div class="cdh" style="color:${RCOLOR[c.rarity]}">${DIMNAME[c.dim]} · ${RARITY[c.rarity]} · 第 ${i+1}/5 张 · 可选 ${opts.length} 项</div>
+      <div class="cdd">${c.desc}</div>
+      ${opts.map((o,j)=>`<div class="opt ${choices[i]===o?'sel':''}" data-j="${j}">${o.n}</div>`).join("")}
+    </div>`;
+  box.querySelectorAll(".opt").forEach(el=>el.onclick=()=>{
+    const j=parseInt(el.dataset.j);
+    choices[i]=opts[j];
+    if(opts[j].mem && !state.memory.some(m=>m.key===opts[j].mem.key)) state.memory.push(opts[j].mem);
+    if(opts[j].flag && !state.memory.some(m=>m.key===opts[j].flag)) state.memory.push({type:"flag",key:opts[j].flag});
+    document.getElementById("cardDetailBox").innerHTML=""; detailIdx=-1;
+    renderDrawer(false);
+    toast(`已抉择：${c.title} → ${opts[j].n}`);
+  });
+}
+
+/* ============ 跨阶段记忆回响 ============ */
+/* 把童年/青年埋下的「记忆」与「足迹旗标」在后续章节的人生叙事里自然回放：
+   - 养了宠物：青年写陪伴、暮年写老死提及
+   - 创业足迹(founded)：暮年回放公司这条人生线 */
+function memoryEcho(stageName){
+  const out=[];
+  state.memory.forEach(m=>{
+    if(m.type==='pet'){
+      if(stageName==='青年' && !m.companion){ m.companion=true;
+        out.push(`你养的${m.name}早已成了家里的一份子，每天回家都有它迎上来蹭你，平淡的日子因此多了几分暖意。`); }
+      if(stageName==='暮年' && !m.died){ m.died=true;
+        out.push(`陪伴你大半生的${m.name}在前几年安安静静地老去了，你把它葬在后院。想起童年它第一次蜷进你怀里的温热，你心头忽地一软。`); }
+    }
+    if(m.type==='flag' && m.key==='founded' && stageName==='暮年' && !m.echoed){ m.echoed=true;
+      out.push(`你当年咬牙创办的那家公司，伴着你走过大半生，成了这条人生线上最硬的一根骨架。`); }
+    if(m.type==='immigrated' && stageName==='暮年' && !m.echoed){ m.echoed=true;
+      out.push(`你当年远赴海外的那个决定，让晚年活成了两种文化的混血——乡音未改，眼界却早已越过重洋。`); }
+    if(m.type==='divorce' && stageName==='暮年' && !m.echoed){ m.echoed=true;
+      out.push(`那场中年离婚的波澜，终究在岁月里平复；如今回想，你只记得自己也曾那样用力地爱过、也体面地放过。`); }
+  });
+  return out;
+}
+
+function genLocalDetailed(stageName, ageRange, echo){
+  let para = `—— 第${cn(stageIdx+1)}章 · ${stageName}（${ageRange}岁）——\n\n`;
+  para += pick(STAGE_INTRO[stageName]) + "\n\n";
+  const byDim={}; drawn.forEach((c,i)=>byDim[c.dim]={c,i});
+  NARR_ORDER.forEach((dm,k)=>{
+    const item=byDim[dm]; if(!item) return;
+    const {c,i}=item; const o=choices[i];
+    const trans = k===0 ? "" : pick(TRANSITIONS);
+    para += `${trans}${c.desc} 面对这样的境遇，你${o.n}。${o.narr}\n\n`;
+  });
+  echo.forEach(e=>{ para += e + "\n\n"; });
+  para += pick(STAGE_OUTRO[stageName]);
+  return para;
+}
+
+// [WorkBuddy 协作] Hy3 Key/Base/Model 管理与 localStorage 持久化（密钥不进仓库，永不写源码）
+function loadSettings(){
+  let c={}; try{ c=JSON.parse(localStorage.getItem("hy3_cfg")||"{}"); }catch(e){}
+  return { key:(c.key||"").trim(),
+           base:(c.base||"http://localhost:8787/v1").trim(),
+           model:(c.model||"hy3").trim() };
+}
+function saveSettings(){
+  const cfg={ key:document.getElementById("setKey").value.trim(),
+              base:document.getElementById("setBase").value.trim()||"http://localhost:8787/v1",
+              model:document.getElementById("setModel").value.trim()||"hy3" };
+  localStorage.setItem("hy3_cfg", JSON.stringify(cfg));
+  updateAiTag(); updateSetStat(); toast("已保存 Hy3 设置");
+}
+function updateAiTag(){
+  const t=document.getElementById("aiTag"); if(t){ const cfg=loadSettings(); t.textContent = cfg.key? "· 🤖 Hy3 撰写中" : "· 本地叙事"; }
+}
+function updateSetStat(){
+  const el=document.getElementById("setStat"); if(!el) return;
+  const cfg=loadSettings();
+  el.textContent = cfg.key? ("已填入 Key（"+cfg.key.slice(0,4)+"…）· 点测试连接验证") : "未填写 Key（将使用本地叙事）";
+}
+async function testHy3(){
+  const cfg=loadSettings();
+  if(!cfg.key) return {ok:false,msg:"未填写 Key（将使用本地叙事）"};
+  try{
+    const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 20000);
+    const resp=await fetch(cfg.base.replace(/\/$/,"")+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.key},body:JSON.stringify({model:cfg.model,messages:[{role:"user",content:"请只回复两个字：成功"}],temperature:0.5,max_tokens:20,stream:false}),signal:ctrl.signal});
+    clearTimeout(to);
+    if(!resp.ok){ let t=""; try{ t=(await resp.text()).slice(0,140); }catch(e){} return {ok:false,msg:"❌ HTTP "+resp.status+" · "+t}; }
+    const d=await resp.json();
+    const c=d&&d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
+    return c? {ok:true,msg:"✅ 连接成功，Hy3 可用"} : {ok:false,msg:"⚠️ 返回异常（无正文）"};
+  }catch(e){ return {ok:false,msg:"❌ 网络/CORS 错误："+(e&&e.message?e.message:e)+"（若提示 CORS/跨域，请改用本地代理 node proxy.js）"}; }
+}
+// [WorkBuddy 协作] 构造结构化 Prompt 调用 Hy3 chat/completions 生成人生章节；失败/超时回退本地叙事
+async function callHy3Chapter(stageName, ageRange, echo){
+  const cfg=loadSettings();
+  if(!cfg.key) return null;
+  const lines=[];
+  drawn.forEach((c,i)=>{ const o=choices[i];
+    lines.push(`【${DIMNAME[c.dim]}】事件：${c.title}（${c.desc}）\n　玩家抉择：${o.n}\n　结果：${o.narr}`); });
+  const userMsg =
+    `人生阶段：${stageName}（${ageRange}岁），这是「人生模拟」游戏的第 ${stageIdx+1} 个阶段。\n`+
+    `本阶段抽到的五张卡片与玩家抉择如下：\n`+ lines.join("\n")+
+    (echo.length? `\n\n前情回响（需自然融入）：\n`+echo.join("\n") : "")+
+    `\n\n请以上述素材写一段该阶段的人生章节。`;
+  const sysMsg="你是一位中文人生传记作家，为人生模拟游戏撰写某一人生阶段的小说化章节。要求：① 以「第N章·阶段名（年龄）」为开头标题行；② 根据玩家在本阶段的五张卡片事件与抉择，写一段连贯、有画面感、符合该年龄事实的中文记叙文，约 300–500 字；③ 五张卡片的事件都要有机融入，不要逐条罗列；④ 用第二人称「你」叙述；⑤ 严禁出现「智慧+20」「健康-5」这类数值提示，也不要写「本章总结」之类的话；⑥ 只输出正文，不解释、不重复指令。";
+  try{
+    const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 60000);
+    const resp=await fetch(cfg.base.replace(/\/$/,"")+"/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.key},
+      body:JSON.stringify({model:cfg.model, messages:[{role:"system",content:sysMsg},{role:"user",content:userMsg}], temperature:0.9, top_p:1.0, max_tokens:1200, stream:false}),
+      signal:ctrl.signal
+    });
+    clearTimeout(to);
+    if(!resp.ok){ console.warn("Hy3 HTTP",resp.status); return null; }
+    const data=await resp.json();
+    const txt=(data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||"";
+    return txt.trim()? txt.trim() : null;
+  }catch(e){ console.warn("Hy3 call failed", e); return null; }
+}
+
+async function generateStory(){
+  const stageName=STAGES[stageIdx];
+  const ageRange=(STAGE_AGE[stageIdx-1]||0)+"–"+STAGE_AGE[stageIdx];
+  const echo=memoryEcho(stageName);   // 仅触发一次，回响文本供两条路径共用
+  const genBtn=document.getElementById("genBtn");
+  genBtn.disabled=true;
+  updateAiTag();
+
+  // 简略版（本地，始终可用，存入档案）
+  state.summaries.push(`第${cn(stageIdx+1)}章·${stageName}：${drawn.map((c,i)=>`「${c.title}」${choices[i].n}`).join("；")}。`);
+
+  // 详细版：优先 Hy3，失败本地兜底
+  let detail=null;
+  const cfg=loadSettings();
+  if(cfg.key){ detail = await callHy3Chapter(stageName, ageRange, echo); }
+  if(!detail){
+    detail = genLocalDetailed(stageName, ageRange, echo);
+    if(cfg.key) toast("⚠️ Hy3 调用失败，已用本地叙事兜底");
+  }
+  state.bio += (state.bio? "\n\n" : "") + detail;
+
+  // 结算
+  drawn.forEach((c,i)=>{ const o=choices[i]; for(const k in o.d) state.dims[k]=clamp(state.dims[k]+o.d[k]); });
+  state.log.unshift(`【${stageName}】${drawn.map(c=>c.title).join("、")}`);
+  renderStats(); renderBio(); renderDrawer(true);
+
+  if(state.age>=80 || stageIdx>=STAGES.length-1){
+    state.age=80; renderStats();
+    setTimeout(endLife, 400);
+    return;
+  }
+  genBtn.className="nextBtn"; genBtn.disabled=false;
+  genBtn.textContent=`▶ 进入下一阶段「${STAGES[stageIdx+1]}」`;
+  genBtn.onclick=()=>{ hide(); };
+}
+function hide(){ const b=document.getElementById("genBtn"); b.className="genBtn"; b.onclick=generateStory; stageIdx++; state.age=STAGE_AGE[stageIdx-1]||0; renderStats(); enterStage(); }
+
+function effectSentence(d){
+  const EFF={
+    health:{up:["身子骨硬朗了些","气色红润起来","手脚愈发轻快","精神头足了不少","身体比从前结实了"],
+            down:["身子骨虚耗了些","气力不如从前","落下了点病根","元气受了损"]},
+    wealth:{up:["手头宽裕了些","积蓄不知不觉厚了","日子过得松快","进项比往常稳当","钱包悄悄鼓了起来"],
+            down:["手头紧巴了些","积蓄薄了下去","进项断了档","钱财散去了不少"]},
+    relation:{up:["人情更暖了些","身边知交多了几个","与人的牵绊深了","家里家外都顺了","口碑悄悄立了起来"],
+              down:["人情冷了些","与身边人生了缝隙","口碑受了挫","牵绊淡了几分"]},
+    happy:{up:["心境明亮了些","眉头舒展了许多","心里头轻快","笑意常挂脸上","日子有了滋味"],
+           down:["心境蒙了层灰","眉头又锁了起来","心头添了烦忧","笑意淡了下去"]},
+    wisdom:{up:["心里更透亮了些","看事通透了几分","处事越发老练","眼界打开了","想事情有了章法"],
+            down:["心里的迷雾重了些","看事乱了方寸","少了几分通透","处事显了青涩"]}
+  };
+  const ups=[],downs=[];
+  for(const k in d){
+    if(d[k]>0) ups.push(DIMNAME[k]+pick(EFF[k].up));
+    else if(d[k]<0) downs.push(DIMNAME[k]+pick(EFF[k].down));
+  }
+  let s="";
+  if(ups.length) s+=ups.join("，")+"；";
+  if(downs.length) s+=downs.join("，")+"。";
+  if(!s) s="一切归于平静，波澜不惊。";
+  return s;
+}
+function renderBio(){
+  const el=document.getElementById("bio");
+  el.innerHTML = state.bio.split("\n").map(line=>{
+    if(line.startsWith("——")) return `<span class="chap">${line.replace(/——/g,"")}</span>`;
+    return line;
+  }).join("\n");
+  const sc=document.getElementById("scroll"); sc.scrollTop=sc.scrollHeight;
+}
+
+/* ============ 落幕档案 ============ */
+function endLife(){
+  state.alive=false;
+  const d=state.dims;
+  const avg=(d.health+d.wealth+d.relation+d.happy+d.wisdom)/5;
+  const rarCount={}; ["N","R","SR","EP","MY","LEG"].forEach(r=>rarCount[r]=state.drawnR.filter(x=>x===r).length);
+  const score=Math.round(avg);
+  const grade = score<80?"D":score<90?"C":score<95?"B":score<98?"A":"S";
+  const entry=ENTRIES.find(x=>x.id===chosenEntryId);
+  const arch={grade, dims:{...d}, entry:entry.name, rar:rarCount, score, bio:state.summaries.join("\n\n"), log:[...state.log]};
+  ARCHIVES.unshift(arch);
+  document.getElementById("arGrade").textContent=grade;
+  document.getElementById("arGrade").className="grade "+grade;
+  document.getElementById("arDims").innerHTML=DIMS.map(dm=>
+    `<div class="dimsum"><span>${DIMNAME[dm]}</span><span>${Math.round(d[dm])}</span></div>`).join("");
+  document.getElementById("arRar").innerHTML=["N","R","SR","EP","MY","LEG"].map(r=>`<span style="color:${RCOLOR[r]}">${RARITY[r]} ${rarCount[r]}</span>`).join(" ");
+  const top=DIMS.reduce((a,b)=>d[a]>=d[b]?a:b);
+  const verdictMap={S:"传奇般的一生，连命运都为你让路。",A:"精彩而平衡的一生，令人艳羡。",B:"有笑有泪，平凡中见真章。",C:"磕磕绊绊，却也走完了全程。",D:"潦草收场，但至少你活过。"};
+  const marks=state.memory.filter(m=>m.type==='pet'||m.key==='founded').map(m=>m.type==='pet'?`与${m.name}相伴半生`:(m.key==='founded'?'白手创办公司':'')).filter(Boolean);
+  document.getElementById("arVerdict").textContent=`综合评分 ${score} · 词条「${entry.name}」 · 最强维度：${DIMNAME[top]}。${verdictMap[grade]}` + (marks.length?` 这一世，你${marks.join('、')}。`:'');
+  document.getElementById("libCount").textContent=ARCHIVES.length;
+  show("ovArchive");
+}
+
+/* ============ 档案库 / 卡组库 ============ */
+const ARCHIVES=[];
+function renderLib(){
+  document.getElementById("libList").innerHTML = ARCHIVES.length? ARCHIVES.map((a,i)=>{
+    const gcolor=a.grade==='S'?'#e1b12c':a.grade==='A'?'#00b894':a.grade==='B'?'#0984e3':a.grade==='C'?'#a55eea':'#b2bec3';
+    const topDim=DIMS.reduce((x,y)=>a.dims[x]>=a.dims[y]?x:y);
+    const rarStr=["N","R","SR","EP","MY","LEG"].map(r=>`${RARITY[r]}${a.rar[r]||0}`).join("/");
+    return `<div class="li" data-idx="${i}" style="cursor:pointer"><div class="t">第 ${ARCHIVES.length-i} 世 · <b style="color:${gcolor}">${a.grade}</b> 级（${a.score}）</div>
+     <div class="s">词条「${a.entry}」 · ${rarStr} · ${DIMNAME[topDim]}最强 · 点击查看当世详情 ▶</div></div>`;
+  }).join("") : `<div class="li"><div class="s">还没有档案，去活出第一世吧。</div></div>`;
+  document.querySelectorAll("#libList .li[data-idx]").forEach(el=>el.onclick=()=>showStory(parseInt(el.dataset.idx)));
+}
+function showStory(idx){
+  const a=ARCHIVES[idx];
+  const gcolor=a.grade==='S'?'#e1b12c':a.grade==='A'?'#00b894':a.grade==='B'?'#0984e3':a.grade==='C'?'#a55eea':'#b2bec3';
+  const bars=DIMS.map(dm=>`<div class="dimrow"><span class="dn">${DIMNAME[dm]}</span><span class="bar"><i style="width:${clamp(a.dims[dm])}%;background:${COLOR[dm]}"></i></span><span class="dv">${Math.round(a.dims[dm])}</span></div>`).join("");
+  document.getElementById("stGrade").textContent=a.grade;
+  document.getElementById("stGrade").style.color=gcolor;
+  document.getElementById("stBars").innerHTML=bars;
+  document.getElementById("stRar").innerHTML=["N","R","SR","EP","MY","LEG"].map(r=>`<span style="color:${RCOLOR[r]}">${RARITY[r]} ${a.rar[r]||0}</span>`).join(" ");
+  document.getElementById("stMeta").textContent=`第 ${ARCHIVES.length-idx} 世 · 词条「${a.entry}」 · 评分 ${a.score}`;
+  document.getElementById("stBio").textContent=a.bio||"（暂无人生记录）";
+  show("ovStory");
+}
+function renderDeck(){
+  document.getElementById("deckGrid").innerHTML = DIMS.map(dm=>{
+    const rars=["N","R","SR","EP","MY","LEG"].filter(r=>DECK[dm][r].length);
+    const cols=rars.map(rar=>{
+      const items=DECK[dm][rar].map(c=>{
+        const stg=c.stages.join("/");
+        const optsHtml=c.opts.map(o=>`<div class="deck-opt"><b>${o.n}</b> <span class="deck-oh">${o.h}</span></div>`).join("");
+        return `<div class="ci" style="border-left:3px solid ${RCOLOR[rar]};padding-left:5px">[${RARITY[rar]}] ${c.title} <span style="color:#b2bec3">·${stg}</span>${optsHtml}</div>`;
+      }).join("");
+      return `<div class="deck-col"><div class="hd" style="color:${COLOR[dm]}">${DIMNAME[dm]} · ${RARITY[rar]}</div>${items}</div>`;
+    }).join("");
+    return cols;
+  }).join("");
+}
+
+/* ============ 流程控制 ============ */
+function show(id){document.getElementById(id).classList.add("show");}
+function hideOv(id){document.getElementById(id).classList.remove("show");}
+function startLife(){
+  state=newState(); stageIdx=0; usedThisLife=new Set(); usedUnique=new Set();
+  const e=ENTRIES.find(x=>x.id===chosenEntryId); e.apply(state);
+  DIMS.forEach(d=>state.dims[d]=clamp(state.dims[d]));
+  document.getElementById("home").style.display="none";
+  document.getElementById("game").style.display="block";
+  document.getElementById("bio").innerHTML='<span style="color:var(--muted)">尚未开始……抽完本阶段五维卡并抉择，人生便从这里落笔。</span>';
+  renderStats(); enterStage();
+}
+function toHome(){
+  ["ovArchive","ovMenu","ovDeck","ovLib"].forEach(hideOv);
+  document.getElementById("game").style.display="none";
+  document.getElementById("home").style.display="block";
+  document.getElementById("libCount").textContent=ARCHIVES.length;
+  rerollEntries(); // 每次开局（回到首页）重新打乱词条
+}
+
+/* ============ 初始化 ============ */
+function renderEntries(){
+  document.getElementById("entryList").innerHTML = currentEntries.map(e=>`
+    <div class="ent ${e.id===chosenEntryId?'sel':''}" data-id="${e.id}">
+      <div><span class="nm">${e.name}</span><span class="rr" style="color:${RCOLOR[e.rarity]}">${RARITY[e.rarity]}</span></div>
+      <div class="ds">${e.desc}</div>
+    </div>`).join("");
+  document.querySelectorAll(".ent").forEach(el=>el.onclick=()=>{chosenEntryId=el.dataset.id; renderEntries();});
+  document.getElementById("groupHint").textContent=`本次呈现 3 个开局词条（按稀有度加权，高品质极难遇见）· 共 ${ENTRIES.length} 种，可无限换一批刷新卡运 · 每次开局自动重洗`;
+}
+function rerollEntries(){
+  currentEntries=pickEntries();
+  if(!currentEntries.find(x=>x.id===chosenEntryId)) chosenEntryId=currentEntries[0].id;
+  renderEntries(); toast("换了一批新词条");
+}
+renderEntries();
+document.getElementById("rerollBtn").onclick=rerollEntries;
+document.getElementById("startBtn").onclick=startLife;
+document.getElementById("genBtn").onclick=generateStory;
+document.getElementById("rebornBtn").onclick=()=>{hideOv("ovArchive"); toHome();};
+document.getElementById("libBtn").onclick=()=>{renderLib(); show("ovLib");};
+document.getElementById("deckBtn").onclick=()=>{renderDeck(); show("ovDeck");};
+document.getElementById("menuBtn").onclick=()=>{document.getElementById("libCount").textContent=ARCHIVES.length; show("ovMenu");};
+document.getElementById("setBtn").onclick=()=>{ const c=loadSettings(); document.getElementById("setKey").value=c.key; document.getElementById("setBase").value=c.base; document.getElementById("setModel").value=c.model; updateSetStat(); show("ovSet"); };
+document.getElementById("setSave").onclick=()=>{ saveSettings(); };
+document.getElementById("setClear").onclick=()=>{ localStorage.removeItem("hy3_cfg"); document.getElementById("setKey").value=""; updateSetStat(); updateAiTag(); toast("已清除 Key"); };
+// 服务商预设联动：切换预设时自动填好 Base URL
+document.getElementById("setPreset").addEventListener("change",e=>{ document.getElementById("setBase").value=e.target.value; });
+// 打开设置时，让预设下拉与已保存的 Base 对应
+document.getElementById("setBtn").addEventListener("click",()=>{ const c=loadSettings(); const sel=document.getElementById("setPreset"); for(const o of sel.options){ if(o.value===c.base){ sel.value=o.value; break; } } });
+document.getElementById("setClose").onclick=()=>hideOv("ovSet");
+document.getElementById("setTest").onclick=async()=>{ const r=await testHy3(); document.getElementById("setStat").textContent=r.msg; };
+updateAiTag();
+document.getElementById("mDeck").onclick=()=>{renderDeck(); hideOv("ovMenu"); show("ovDeck");};
+document.getElementById("mLib").onclick=()=>{renderLib(); hideOv("ovMenu"); show("ovLib");};
+document.getElementById("mHome").onclick=toHome;
+document.getElementById("mClose").onclick=()=>hideOv("ovMenu");
+document.getElementById("deckClose").onclick=()=>hideOv("ovDeck");
+document.getElementById("libClose").onclick=()=>hideOv("ovLib");
+document.getElementById("stClose").onclick=()=>{hideOv("ovStory"); show("ovLib");};
+</script>
+</body>
+</html>
